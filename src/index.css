@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", serif;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-[#f9f9f9] text-[#1a1c1c];
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .primary-gradient {
+    background: linear-gradient(135deg, #ba0036 0%, #e21e4a 100%);
+  }
+  .toast-enter {
+    animation: toast-in 0.3s ease-out forwards;
+  }
+  .toast-exit {
+    animation: toast-out 0.3s ease-in forwards;
+  }
+  @keyframes toast-in {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes toast-out {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
+  }
+
+  /* Sidebar Animations */
+  .sidebar-open {
+    display: flex !important;
+  }
+  .sidebar-content-enter {
+    transform: translateX(0) !important;
+  }
+  .sidebar-content-exit {
+    transform: translateX(100%) !important;
+  }
+}
