@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StyleHN | Panel de Administración</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- We will use standard Tailwind CSS here, no custom CSS required for admin -->
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .sidebar-link.active { background-color: #f4f4f5; color: #18181b; font-weight: bold; border-right: 3px solid #ba0036; }
+    </style>
+</head>
+<body class="bg-zinc-50 text-zinc-900 font-sans flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-zinc-200 flex flex-col h-full flex-shrink-0">
+        <div class="p-6 border-b border-zinc-200 flex justify-between items-center">
+            <h1 class="text-2xl font-serif italic font-bold">Admin HN</h1>
+            <a href="index.html" class="text-zinc-400 hover:text-zinc-900" title="Volver a la tienda">
+                <i data-lucide="external-link" class="w-5 h-5"></i>
+            </a>
+        </div>
+        <nav class="flex-1 py-4 flex flex-col gap-1 overflow-y-auto">
+            <button class="sidebar-link active flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-dashboard">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+            </button>
+            <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-products">
+                <i data-lucide="package" class="w-5 h-5"></i> Productos
+            </button>
+            <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-orders">
+                <i data-lucide="shopping-cart" class="w-5 h-5"></i> Pedidos
+            </button>
+            <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-users">
+                <i data-lucide="users" class="w-5 h-5"></i> Usuarios
+            </button>
+            <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-settings">
+                <i data-lucide="settings" class="w-5 h-5"></i> Apariencia
+            </button>
+        </nav>
+        <div class="p-4 border-t border-zinc-200">
+            <div id="admin-user-info" class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center">
+                    <i data-lucide="user" class="w-5 h-5 text-zinc-500"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p class="text-sm font-bold truncate" id="admin-name">Cargando...</p>
+                    <p class="text-xs text-zinc-500 truncate" id="admin-email">...</p>
+                </div>
+            </div>
+            <button id="admin-logout-btn" class="w-full py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Cerrar Sesión
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full bg-zinc-50 overflow-y-auto">
+        
+        <!-- Loading Overlay for whole page -->
+        <div id="page-loader" class="fixed inset-0 bg-white z-[200] flex flex-col items-center justify-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ba0036] mb-4"></div>
+            <p class="text-zinc-500 animate-pulse">Verificando credenciales...</p>
+        </div>
+
+        <div class="p-8 max-w-6xl w-full mx-auto">
+            
+            <!-- Dashboard Tab -->
+            <section id="tab-dashboard" class="tab-content active">
+                <h2 class="text-3xl font-serif mb-6">Vista General</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm flex items-center gap-4">
+                        <div class="bg-rose-100 p-3 rounded-full text-rose-600">
+                            <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-zinc-500 font-bold uppercase tracking-widest">Ingresos</p>
+                            <p class="text-2xl font-black mt-1" id="dash-revenue">$0.00</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm flex items-center gap-4">
+                        <div class="bg-blue-100 p-3 rounded-full text-blue-600">
+                            <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-zinc-500 font-bold uppercase tracking-widest">Pedidos</p>
+                            <p class="text-2xl font-black mt-1" id="dash-orders">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm flex items-center gap-4">
+                        <div class="bg-emerald-100 p-3 rounded-full text-emerald-600">
+                            <i data-lucide="package" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-zinc-500 font-bold uppercase tracking-widest">Productos</p>
+                            <p class="text-2xl font-black mt-1" id="dash-products">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm flex items-center gap-4">
+                        <div class="bg-purple-100 p-3 rounded-full text-purple-600">
+                            <i data-lucide="users" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-zinc-500 font-bold uppercase tracking-widest">Usuarios</p>
+                            <p class="text-2xl font-black mt-1" id="dash-users">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm lg:col-span-2">
+                        <h3 class="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-800"><i data-lucide="trending-up" class="w-5 h-5 text-zinc-400"></i> Historial de Ventas</h3>
+                        <div class="relative w-full h-64">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
+                        <h3 class="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-800"><i data-lucide="pie-chart" class="w-5 h-5 text-zinc-400"></i> Estado de Pedidos</h3>
+                        <div class="relative w-full h-64 flex justify-center">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Products Tab -->
+            <section id="tab-products" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-serif">Productos</h2>
+                    <button id="new-product-btn" class="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-md flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Nuevo Producto
+                    </button>
+                </div>
+                
+                <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-zinc-50 border-b border-zinc-200">
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Producto</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Precio</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Categoría</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Etiquetas</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-tbody" class="divide-y divide-zinc-100">
+                            <tr><td colspan="5" class="p-6 text-center text-zinc-400">Cargando productos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Product Form Modal -->
+                <div id="product-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-6">
+                    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+                        <div class="p-6 border-b border-zinc-100 flex justify-between items-center">
+                            <h3 class="text-xl font-bold" id="product-modal-title">Añadir Producto</h3>
+                            <button class="close-product-modal text-zinc-400 hover:text-zinc-900">
+                                <i data-lucide="x" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <form id="admin-product-form" class="p-6 overflow-y-auto flex flex-col gap-4">
+                            <input type="hidden" id="ap-id">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Nombre</label>
+                                    <input type="text" id="ap-name" required class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Precio ($)</label>
+                                    <input type="number" id="ap-price" step="0.01" required class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Categoría</label>
+                                    <!-- This will be populated dynamically if they change, but basic are hardcoded -->
+                                    <select id="ap-category" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                        <option value="Mujer">Mujer</option>
+                                        <option value="Hombre">Hombre</option>
+                                        <option value="Niños">Niños</option>
+                                        <option value="Accesorios">Accesorios</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Stock</label>
+                                    <input type="number" id="ap-stock" value="10" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Tallas / Variantes (Opcional)</label>
+                                    <p class="text-[10px] text-zinc-500 mb-1 -mt-1">Escribe tallas separadas por coma. Ej: S, M, L, XL, 38, 40</p>
+                                    <input type="text" id="ap-sizes" placeholder="Dejar en blanco si es talla única" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono text-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">URL de Imagen</label>
+                                <input type="url" id="ap-image" required class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Descripción</label>
+                                <textarea id="ap-desc" rows="2" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none"></textarea>
+                            </div>
+                            <div class="flex gap-6 mt-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="ap-isNew" class="w-4 h-4 rounded text-black">
+                                    <span class="text-sm font-medium">Marcar como "Nuevo"</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="ap-isOffer" class="w-4 h-4 rounded text-black">
+                                    <span class="text-sm font-medium">Activar Oferta</span>
+                                </label>
+                            </div>
+                            <div id="offer-fields" class="hidden grid grid-cols-2 gap-4 mt-2 p-4 bg-rose-50 rounded-lg border border-rose-100">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-rose-500 mb-1">Precio Original ($)</label>
+                                    <input type="number" id="ap-oldPrice" step="0.01" class="w-full px-3 py-2 border rounded-lg focus:border-rose-400 outline-none bg-white">
+                                </div>
+                            </div>
+                            <div class="mt-4 flex justify-end gap-3">
+                                <button type="button" class="close-product-modal px-4 py-2 border rounded-lg text-sm font-bold hover:bg-zinc-50">Cancelar</button>
+                                <button type="submit" class="bg-black text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-zinc-800">Guardar Producto</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Orders Tab -->
+            <section id="tab-orders" class="tab-content">
+                <h2 class="text-3xl font-serif mb-6">Pedidos Recientes</h2>
+                <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-zinc-50 border-b border-zinc-200">
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">ID Pedido / Fecha</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Cliente</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Total</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Estado</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody" class="divide-y divide-zinc-100">
+                            <tr><td colspan="5" class="p-6 text-center text-zinc-400">Cargando pedidos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Order Details Modal -->
+            <div id="order-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-6">
+                <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+                    <div class="p-6 border-b border-zinc-100 flex justify-between items-center">
+                        <h3 class="text-xl font-bold" id="order-modal-title">Detalles del Pedido</h3>
+                        <button class="close-order-modal text-zinc-400 hover:text-zinc-900 cursor-pointer">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 overflow-y-auto flex flex-col gap-6" id="order-modal-content">
+                        <!-- Content injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Tab -->
+            <section id="tab-users" class="tab-content">
+                <h2 class="text-3xl font-serif mb-6">Usuarios Registrados</h2>
+                <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-zinc-50 border-b border-zinc-200">
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Usuario</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Email</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Rol</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Último Acceso</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody" class="divide-y divide-zinc-100">
+                            <tr><td colspan="4" class="p-6 text-center text-zinc-400">Cargando usuarios...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Tab -->
+            <section id="tab-settings" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-serif">Configuración de Apariencia</h2>
+                    <button id="save-settings-btn" class="bg-zinc-900 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-zinc-800 transition-colors shadow-md flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> Guardar Todo
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="palette" class="w-4 h-4 text-zinc-400"></i> Tema y Colores</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Color Principal (Acentos, Botones)</label>
+                                <div class="flex items-center gap-3 w-full">
+                                    <input type="color" id="cfg-color-1" value="#ba0036" class="w-12 h-12 p-1 border rounded cursor-pointer shrink-0">
+                                    <input type="text" id="cfg-color-1-text" value="#ba0036" class="px-3 py-2 border rounded-lg w-full outline-none focus:border-black font-mono">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Ofertas del Día (Expira en)</label>
+                                <input type="datetime-local" id="cfg-offer-end" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="flag" class="w-4 h-4 text-zinc-400"></i> Marcas Asociadas</h3>
+                        <p class="text-sm text-zinc-500 mb-4">Ingresa nombres separados por comas, O bien un enlace directo a una imagen de logo (http...).</p>
+                        <input type="text" id="cfg-brands" placeholder="VOGUE, Prada, GUCCI..." class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-serif">
+                    </div>
+
+                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="truck" class="w-4 h-4 text-zinc-400"></i> Reglas de Envío</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Costo Base ($)</label>
+                                <input type="number" id="cfg-shipping-cost" step="0.01" value="0.00" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Envío Gratis a partir de ($)</label>
+                                <input type="number" id="cfg-shipping-threshold" step="0.01" value="0.00" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
+                                <p class="text-[10px] text-zinc-400 mt-1">Si el pedido supera este total, el envío será $0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="image" class="w-4 h-4 text-zinc-400"></i> Banner Principal (Hero)</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Imagen URL</label>
+                                <input type="url" id="cfg-hero-image" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Subtítulo Pequeño</label>
+                                <input type="text" id="cfg-hero-subtitle" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Título Grande</label>
+                                <input type="text" id="cfg-hero-title" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Portadas de Categorías -->
+                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="layout-grid" class="w-4 h-4 text-zinc-400"></i> Portadas de Categorías</h3>
+                        <p class="text-xs text-zinc-500 mb-4 tracking-wide">Coloca el enlace (URL) de la imagen para cada cuadrícula principal de la tienda.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Mujer</label>
+                                <input type="url" id="cfg-cover-mujer" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Hombre</label>
+                                <input type="url" id="cfg-cover-hombre" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Niños</label>
+                                <input type="url" id="cfg-cover-ninos" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Accesorios</label>
+                                <input type="url" id="cfg-cover-accesorios" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div class="bg-zinc-100 p-6 border border-zinc-200 rounded-2xl shadow-inner col-span-full flex flex-col items-center">
+                         <h3 class="font-bold text-lg flex items-center gap-2 text-zinc-500 mb-6"><i data-lucide="monitor" class="w-5 h-5"></i> Vista Previa (Escritorio)</h3>
+                         <div class="relative w-full max-w-3xl aspect-[21/9] border-4 border-zinc-200 rounded-xl overflow-hidden shadow-2xl bg-white group">
+                             <img id="preview-hero-img" class="w-full h-full object-cover" src="https://via.placeholder.com/1200x500" alt="Hero Preview">
+                             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-8">
+                                 <span id="preview-hero-subtitle" class="text-white/80 uppercase tracking-widest text-xs mb-2 font-medium">Editorial SS24</span>
+                                 <h2 id="preview-hero-title" class="text-white text-4xl md:text-5xl font-serif leading-tight">Nueva Colección<br/>2024</h2>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Login Overlay -->
+    <div id="admin-login-overlay" class="fixed inset-0 bg-white z-[150] flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full border border-zinc-100">
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 bg-zinc-900 text-white rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="shield" class="w-6 h-6"></i>
+                </div>
+                <h2 class="text-2xl font-serif font-bold">Admin Login</h2>
+                <p class="text-zinc-500 text-sm mt-1">Ingresa tus credenciales</p>
+            </div>
+            <form id="admin-login-form" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1">Email</label>
+                    <input type="email" id="login-email" required class="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:border-black outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1">Contraseña</label>
+                    <input type="password" id="login-password" required class="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:border-black outline-none transition-all">
+                </div>
+                <button type="submit" id="login-submit-btn" class="bg-zinc-900 text-white w-full py-4 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all mt-2">
+                    Iniciar Sesión
+                </button>
+            </form>
+            <div class="mt-6 text-center">
+                <a href="index.html" class="text-xs text-zinc-500 hover:text-black">Volver a la tienda</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none"></div>
+
+    <script type="module" src="./js/admin.js"></script>
+</body>
+</html>
