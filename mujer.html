@@ -8,7 +8,7 @@
   <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
   <link rel="stylesheet" href="./css/styles.css" />
   <script>
-    (function () {
+    (function() {
       try {
         const cached = localStorage.getItem('stylehn_settings');
         if (cached) {
@@ -18,12 +18,12 @@
             const style = document.createElement('style');
             style.id = 'early-branding-style';
             style.innerHTML = `
-                :root { --primary-color: ${config.primaryColor} !important; }
-                .bg-\\[\\#ba0036\\] { background-color: ${config.primaryColor} !important; }
-                .text-\\[\\#ba0036\\] { color: ${config.primaryColor} !important; }
-                .border-\\[\\#ba0036\\] { border-color: ${config.primaryColor} !important; }
-                .primary-gradient { background: ${config.primaryColor} !important; }
-              `;
+              :root { --primary-color: ${config.primaryColor} !important; }
+              .bg-\\[\\#ba0036\\] { background-color: ${config.primaryColor} !important; }
+              .text-\\[\\#ba0036\\] { color: ${config.primaryColor} !important; }
+              .border-\\[\\#ba0036\\] { border-color: ${config.primaryColor} !important; }
+              .primary-gradient { background: ${config.primaryColor} !important; }
+            `;
             document.head.appendChild(style);
           }
           // Apply branding as soon as possible
@@ -40,18 +40,10 @@
             }
 
             if (config.hero) {
-              const hContainer = document.getElementById('hero-media-container');
               const hImg = document.getElementById('main-hero-img');
-
-              const isVideo = (url) => url && (url.includes('/video/upload/') || url.match(/\.(mp4|webm|ogg|mov)$/i));
-
-              if (hImg && config.hero.image) {
-                if (isVideo(config.hero.image)) {
-                  hImg.outerHTML = `<video id="main-hero-img" class="w-full h-full object-cover opacity-90 transition-opacity duration-500 delay-100" src="${config.hero.image}" autoplay muted loop playsinline></video>`;
-                } else {
-                  hImg.src = config.hero.image;
-                  hImg.classList.remove('skeleton');
-                }
+              if (hImg && config.hero.image) { 
+                hImg.src = config.hero.image;
+                hImg.classList.remove('skeleton');
               }
               const hTitle = document.getElementById('main-hero-title');
               if (hTitle && config.hero.title) {
@@ -86,7 +78,7 @@
             applyBranding();
           }
         }
-      } catch (e) { }
+      } catch(e) {}
     })();
   </script>
 </head>
@@ -104,8 +96,7 @@
           <!-- Dynamic categories -->
         </nav>
       </div>
-      <h1 id="navbar-logo"
-        class="text-2xl font-bold font-serif text-zinc-900 absolute left-1/2 -translate-x-1/2 cursor-pointer"
+      <h1 id="navbar-logo" class="text-2xl font-bold font-serif text-zinc-900 absolute left-1/2 -translate-x-1/2 cursor-pointer"
         onclick="window.scrollTo({top: 0, behavior: 'smooth'})">StyleHN</h1>
       <div class="flex items-center gap-4">
         <button id="admin-btn"
@@ -250,8 +241,7 @@
           <img id="pd-image" class="w-full h-full object-cover" src="" alt="Product Image">
         </div>
         <!-- Thumbnail Gallery -->
-        <div id="pd-gallery"
-          class="flex gap-2 p-4 bg-white/50 backdrop-blur-sm overflow-x-auto hide-scrollbar border-t border-zinc-100 hidden">
+        <div id="pd-gallery" class="flex gap-2 p-4 bg-white/50 backdrop-blur-sm overflow-x-auto hide-scrollbar border-t border-zinc-100 hidden">
           <!-- Thumbnails will be injected here -->
         </div>
       </div>
@@ -364,8 +354,7 @@
 
   <main class="pt-16 pb-24">
     <!-- Categories Scroll Bar -->
-    <section id="category-scroll-bar"
-      class="bg-[#f9f9f9] sticky top-16 z-40 py-4 px-6 overflow-x-auto hide-scrollbar flex gap-3 items-center">
+    <section id="category-scroll-bar" class="bg-[#f9f9f9] sticky top-16 z-40 py-4 px-6 overflow-x-auto hide-scrollbar flex gap-3 items-center">
       <button
         class="px-6 py-2 bg-zinc-900 text-white text-sm font-medium rounded-full whitespace-nowrap cursor-pointer">Todos</button>
       <!-- Dynamic categories will be injected here -->
@@ -373,18 +362,15 @@
 
     <!-- Hero Section -->
     <section class="px-6 mb-12">
-      <div id="hero-media-container"
-        class="relative w-full aspect-[4/5] md:aspect-[21/9] rounded-xl overflow-hidden group">
-        <img id="main-hero-img"
-          class="w-full h-full object-cover transition-opacity duration-500 delay-100 opacity-90 skeleton"
-          src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Hero Collection"
-          referrerPolicy="no-referrer" />
+      <div class="relative w-full aspect-[4/5] md:aspect-[21/9] rounded-xl overflow-hidden group">
+        <img id="main-hero-img" class="w-full h-full object-cover transition-opacity duration-500 delay-100 opacity-90 skeleton"
+          src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+          alt="Hero Collection" referrerPolicy="no-referrer" />
         <div
           class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-8 md:p-16">
           <span id="main-hero-subtitle"
             class="text-white/80 uppercase tracking-widest text-xs mb-2 font-medium w-32 h-4 skeleton rounded"></span>
-          <h2 id="main-hero-title"
-            class="text-white text-4xl md:text-6xl font-serif mb-6 leading-tight w-3/4 h-16 skeleton rounded"></h2>
+          <h2 id="main-hero-title" class="text-white text-4xl md:text-6xl font-serif mb-6 leading-tight w-3/4 h-16 skeleton rounded"></h2>
           <button
             class="primary-gradient text-white px-8 py-4 rounded-full w-fit font-semibold text-sm hover:scale-105 active:scale-95 transition-transform cursor-pointer">
             Comprar Ahora
@@ -430,8 +416,8 @@
         <div class="relative aspect-square md:aspect-video rounded-xl overflow-hidden group cursor-pointer">
           <img id="cover-mujer-img"
             class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 skeleton"
-            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Mujer"
-            referrerpolicy="no-referrer" />
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+            alt="Mujer" referrerpolicy="no-referrer" />
           <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
             <h4 class="text-white text-4xl font-serif italic tracking-wider">Mujer</h4>
           </div>
@@ -440,8 +426,8 @@
           <div class="relative aspect-square rounded-xl overflow-hidden group cursor-pointer">
             <img id="cover-hombre-img"
               class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 skeleton"
-              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Hombre"
-              referrerpolicy="no-referrer" />
+              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+              alt="Hombre" referrerpolicy="no-referrer" />
             <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
               <h4 class="text-white text-xl font-serif italic">Hombre</h4>
             </div>
@@ -449,8 +435,8 @@
           <div class="relative aspect-square rounded-xl overflow-hidden group cursor-pointer">
             <img id="cover-ninos-img"
               class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 skeleton"
-              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Niños"
-              referrerpolicy="no-referrer" />
+              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+              alt="Niños" referrerpolicy="no-referrer" />
             <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
               <h4 class="text-white text-xl font-serif italic">Niños</h4>
             </div>
@@ -458,8 +444,8 @@
           <div class="relative col-span-2 aspect-[21/9] rounded-xl overflow-hidden group cursor-pointer">
             <img id="cover-accesorios-img"
               class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 skeleton"
-              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Accesorios"
-              referrerpolicy="no-referrer" />
+              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+              alt="Accesorios" referrerpolicy="no-referrer" />
             <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
               <h4 class="text-white text-3xl font-serif italic">Accesorios</h4>
             </div>
@@ -556,12 +542,10 @@
   <!-- Footer -->
   <footer class="bg-[#1A1A2E] text-white py-16 px-8 border-t border-zinc-800">
     <div class="max-w-screen-2xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12 mb-16">
-      <div class="max-w-xs">
-        <h2 class="text-3xl font-serif italic mb-6">StyleHN</h2>
-        <p class="text-zinc-400 text-sm leading-relaxed mb-6">
-          Redefiniendo el lujo y la moda editorial en cada detalle. Tu boutique digital exclusiva.
-        </p>
-        <div class="flex gap-4">
+      <div class="col-span-2 md:col-span-1">
+        <h5 id="footer-logo" class="text-2xl font-serif font-bold mb-6 text-white tracking-tighter">StyleHN</h5>
+        <p id="footer-description" class="text-zinc-500 text-xs leading-relaxed uppercase tracking-widest">Editorial E-Commerce. Alta calidad en cada prenda.</p>
+        <div class="flex gap-4 mt-6">
           <button
             class="w-10 h-10 rounded-full border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:border-white transition-all cursor-pointer">
             <i data-lucide="globe" class="w-4 h-4"></i>
@@ -576,21 +560,13 @@
           </button>
         </div>
       </div>
-      <div class="grid grid-cols-2 lg:grid-cols-3 gap-12">
-        <div class="col-span-2 md:col-span-1">
-          <h5 id="footer-logo" class="text-2xl font-serif font-bold mb-6 text-white tracking-tighter">StyleHN</h5>
-          <p id="footer-description" class="text-zinc-500 text-xs leading-relaxed uppercase tracking-widest">Editorial
-            E-Commerce. Alta calidad en cada prenda.</p>
-        </div>
-        <div id="footer-sections-container" class="contents">
-          <!-- Dynamic footer sections will be injected here -->
-        </div>
+      <div id="footer-sections-container" class="contents">
+        <!-- Dynamic footer sections will be injected here -->
       </div>
     </div>
     <div
       class="max-w-screen-2xl mx-auto pt-8 border-t border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-6">
-      <p id="footer-copyright" class="text-zinc-500 text-[10px] uppercase tracking-widest">© 2024 StyleHN Editorial. All
-        rights reserved.</p>
+      <p id="footer-copyright" class="text-zinc-500 text-[10px] uppercase tracking-widest">© 2024 StyleHN Editorial. All rights reserved.</p>
       <div class="flex gap-6 items-center opacity-30 grayscale">
         <i data-lucide="credit-card" class="w-5 h-5"></i>
         <i data-lucide="wallet" class="w-5 h-5"></i>
@@ -599,32 +575,6 @@
   </footer>
 
   <!-- Admin Panel Overlay Removed (Moved to admin.html) -->
-
-  <!-- Order Success Modal -->
-  <div id="order-success-overlay"
-    class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] hidden flex items-center justify-center p-6 transition-opacity">
-    <div
-      class="bg-white w-full max-w-md rounded-2xl p-10 text-center shadow-2xl transform transition-transform animate-[slideUp_0.3s_ease-out]">
-      <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-        <i data-lucide="check" class="w-10 h-10"></i>
-      </div>
-      <h3 class="text-3xl font-serif italic mb-2 text-zinc-900">¡Pedido Exitoso!</h3>
-      <p class="text-zinc-500 text-sm mb-8 leading-relaxed">Tu orden ha sido procesada correctamente. Gracias por
-        confiar en nosotros.</p>
-
-      <div class="flex flex-col gap-3">
-        <button id="success-whatsapp-btn"
-          class="hidden bg-emerald-500 text-white w-full py-4 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
-          <i data-lucide="message-circle" class="w-5 h-5"></i>
-          Asistencia por WhatsApp
-        </button>
-        <button id="success-continue-btn"
-          class="bg-zinc-900 text-white w-full py-4 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
-          Seguir Comprando
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- Error Overlay -->
   <div id="error-overlay"

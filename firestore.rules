@@ -64,7 +64,7 @@ service cloud.firestore {
     // ===============================================================
     function isValidProduct(data) {
       return data.keys().hasAll(['id', 'name', 'price', 'image', 'category']) &&
-             data.keys().hasOnly(['id', 'name', 'price', 'image', 'category', 'sizes', 'isNew', 'isOffer', 'oldPrice', 'stock', 'description', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['id', 'name', 'price', 'image', 'extraImages', 'category', 'brand', 'sizes', 'isNew', 'isOffer', 'isTrending', 'oldPrice', 'stock', 'description', 'createdAt', 'updatedAt']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.price is number && data.price > 0 &&
@@ -95,10 +95,13 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
-    // Products: Publicly readable, only admin can write
+    // Products: Publicly readable, only admin can fully write, users can deduct stock
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin() && isValidProduct(request.resource.data);
+      allow create: if isAdmin() && isValidProduct(request.resource.data);
+      allow delete: if isAdmin();
+      allow update: if (isAdmin() && isValidProduct(request.resource.data)) || 
+                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
     }
 
     // User data: Only owner can access
@@ -120,8 +123,9 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
     match /settings/{docId} {

@@ -1,6 +1,7 @@
 import { auth, db, logout, handleFirestoreError, OperationType } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-import { collection, doc, setDoc, deleteDoc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+import { collection, doc, setDoc, deleteDoc, getDoc, onSnapshot, serverTimestamp, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+// Storage logic migrated to Cloudinary
 
 const ADMIN_EMAIL = 'lopezosmedi456@gmail.com';
 
@@ -55,6 +56,99 @@ const showToast = (message) => {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 };
+
+/* =========================================
+   CLOUDINARY CONFIG (REEMPLAZA ESTOS DATOS)
+   ========================================= */
+const CLOUDINARY_CLOUD_NAME = 'ddhqgmnee';
+const CLOUDINARY_UPLOAD_PRESET = 'tienda1_preset';
+
+const uploadImage = async (file) => {
+    if (!file) return null;
+    
+    if (CLOUDINARY_CLOUD_NAME === 'TU_CLOUD_NAME') {
+        alert("¡Configuración incompleta!\nPara subir imágenes, primero debes configurar tu 'Cloud Name' y 'Upload Preset' en el archivo js/admin.js.");
+        throw new Error("Cloudinary not configured");
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error.message || "Error al subir a Cloudinary");
+    }
+
+    const data = await response.json();
+    return data.secure_url;
+};
+
+// Generic Preview Logic
+const setupFilePreview = (fileInputId, containerId, previewBoxId, urlInputId) => {
+    const input = document.getElementById(fileInputId);
+    if (!input) return;
+
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                const container = document.getElementById(containerId);
+                const box = document.getElementById(previewBoxId);
+                const urlInput = document.getElementById(urlInputId);
+                
+                if (container) container.classList.remove('hidden');
+                if (urlInput) urlInput.placeholder = "Archivo seleccionado para subir";
+
+                if (box) {
+                    if (file.type.startsWith('video/')) {
+                        box.innerHTML = `<video src="${re.target.result}" class="w-full h-full object-cover" muted loop autoplay></video>`;
+                    } else {
+                        box.innerHTML = `<img src="${re.target.result}" class="w-full h-full object-cover">`;
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+};
+
+// Initialize Previews
+setupFilePreview('ap-image-file-1', 'ap-preview-container-1', 'ap-preview-1', 'ap-image-1');
+setupFilePreview('ap-image-file-2', 'ap-preview-container-2', 'ap-preview-2', 'ap-image-2');
+setupFilePreview('ap-image-file-3', 'ap-preview-container-3', 'ap-preview-3', 'ap-image-3');
+
+setupFilePreview('cfg-hero-file', 'cfg-hero-preview-container', 'cfg-hero-preview-box', 'cfg-hero-image');
+setupFilePreview('cfg-file-mujer', null, null, 'cfg-cover-mujer');
+setupFilePreview('cfg-file-hombre', null, null, 'cfg-cover-hombre');
+setupFilePreview('cfg-file-ninos', null, null, 'cfg-cover-ninos');
+setupFilePreview('cfg-file-accesorios', null, null, 'cfg-cover-accesorios');
+
+const removePreview = (idx) => {
+    const input = document.getElementById(`ap-image-file-${idx}`);
+    if (input) input.value = '';
+    document.getElementById(`ap-preview-container-${idx}`)?.classList.add('hidden');
+    const urlInput = document.getElementById(`ap-image-${idx}`);
+    if (urlInput) urlInput.placeholder = `URL ${idx}`;
+};
+
+document.getElementById('remove-ap-img-1')?.addEventListener('click', () => removePreview(1));
+document.getElementById('remove-ap-img-2')?.addEventListener('click', () => removePreview(2));
+document.getElementById('remove-ap-img-3')?.addEventListener('click', () => removePreview(3));
+
+document.getElementById('remove-cfg-hero')?.addEventListener('click', () => {
+    const input = document.getElementById('cfg-hero-file');
+    if (input) input.value = '';
+    document.getElementById('cfg-hero-preview-container')?.classList.add('hidden');
+    const urlInput = document.getElementById('cfg-hero-image');
+    if (urlInput) urlInput.placeholder = "O pega el link aquí...";
+});
 
 // Auth Elements
 const loginOverlay = document.getElementById('admin-login-overlay');
@@ -156,8 +250,28 @@ const loadDashboardData = () => {
         const revenue = allOrders.filter(o => o.status === 'Entregado').reduce((sum, order) => sum + (order.total || 0), 0);
         document.getElementById('dash-revenue').textContent = `$${revenue.toFixed(2)}`;
         
+        // Calculate Recurrent Clients
+        const emailsCount = {};
+        let recurrentes = 0;
+        let totalUnique = 0;
+        allOrders.forEach(o => {
+           if (o.userEmail && o.status !== 'Cancelado') {
+               emailsCount[o.userEmail] = (emailsCount[o.userEmail] || 0) + 1;
+           }
+        });
+        Object.values(emailsCount).forEach(count => {
+            totalUnique++;
+            if (count > 1) recurrentes++;
+        });
+        const recurPct = totalUnique > 0 ? Math.round((recurrentes / totalUnique) * 100) : 0;
+        const recurEl = document.getElementById('dash-recurrentes');
+        if (recurEl) recurEl.textContent = `${recurPct}% Recurrentes`;
+
         renderOrdersTable();
         renderCharts();
+        
+        // Re-render users table to update purchase counts now that orders are updated
+        if (allUsers.length > 0) renderUsersTable();
     });
 
     // Listen Users
@@ -167,33 +281,88 @@ const loadDashboardData = () => {
         renderUsersTable();
     });
 
-    // Load Settings
-    getDoc(doc(db, 'settings', 'site_config')).then(snapshot => {
+    // Load Settings (Reactive)
+    onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
         if (snapshot.exists()) {
             const data = snapshot.data();
-            if (data.primaryColor) {
-                document.getElementById('cfg-color-1').value = data.primaryColor;
-                document.getElementById('cfg-color-1-text').value = data.primaryColor;
-            }
-            if (data.brands) document.getElementById('cfg-brands').value = data.brands.join(', ');
-            if (data.hero) {
-                const imgVal = data.hero.image || '';
-                const subVal = data.hero.subtitle || '';
-                const titVal = data.hero.title || '';
-                document.getElementById('cfg-hero-image').value = imgVal;
-                document.getElementById('cfg-hero-subtitle').value = subVal;
-                document.getElementById('cfg-hero-title').value = titVal;
+            
+            // Helper to update input only if not focused
+            const updateInput = (id, value) => {
+                const el = document.getElementById(id);
+                if (el && document.activeElement !== el) el.value = value || '';
+            };
+
+            updateInput('cfg-store-name', data.storeName);
+            updateInput('cfg-store-desc', data.storeDescription);
+            
+            if (data.categories) {
+                const categoriesStr = data.categories.join(', ');
+                updateInput('cfg-categories', categoriesStr);
                 
-                // Update new preview
-                if (imgVal) document.getElementById('preview-hero-img').src = imgVal;
-                document.getElementById('preview-hero-subtitle').textContent = subVal;
-                document.getElementById('preview-hero-title').innerHTML = titVal.replace('\\n', '<br />');
+                // Populate Product Form Category Dropdown
+                const apCategory = document.getElementById('ap-category');
+                if (apCategory) {
+                    const currentVal = apCategory.value;
+                    apCategory.innerHTML = data.categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+                    if (data.categories.includes(currentVal)) apCategory.value = currentVal;
+                }
+
+                // Populate Product Filter Buttons
+                const productFilters = document.getElementById('product-filters');
+                if (productFilters) {
+                    const todosBtn = `<button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors ${currentProductFilter === 'Todos' ? 'bg-zinc-900 text-white shadow-md border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 shadow-sm'}" data-filter="Todos">Todos</button>`;
+                    const dynamicBtns = data.categories.map(cat => `<button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors ${currentProductFilter === cat ? 'bg-zinc-900 text-white shadow-md border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 shadow-sm'}" data-filter="${cat}">${cat}</button>`).join('');
+                    const extraBtns = `
+                        <button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors ${currentProductFilter === 'Agotados' ? 'bg-zinc-900 text-white shadow-md border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 shadow-sm'}" data-filter="Agotados">Agotados</button>
+                        <button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors ${currentProductFilter === 'Destacados' ? 'bg-zinc-900 text-white shadow-md border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 shadow-sm'}" data-filter="Destacados">Destacados</button>
+                    `;
+                    productFilters.innerHTML = todosBtn + dynamicBtns + extraBtns;
+                }
             }
-            if (data.offerEndTime) document.getElementById('cfg-offer-end').value = data.offerEndTime;
-            document.getElementById('cfg-shipping-cost').value = data.shippingCost || '0.00';
-            document.getElementById('cfg-shipping-threshold').value = data.shippingFreeThreshold || '0.00';
+            
+            // Footer Builder (Only update if container is empty or we are not in the builder tab/active)
+            if (data.footer) {
+                const builder = document.getElementById('footer-builder');
+                if (builder && builder.children.length === 0) {
+                    renderFooterBuilder(data.footer);
+                }
+            }
+            
+            if (data.primaryColor) {
+                updateInput('cfg-color-1', data.primaryColor);
+                updateInput('cfg-color-1-text', data.primaryColor);
+            }
+            if (data.brands) {
+                updateInput('cfg-brands', data.brands.join(', '));
+                const apBrand = document.getElementById('ap-brand');
+                if (apBrand) {
+                    const currentVal = apBrand.value;
+                    apBrand.innerHTML = '<option value="">Ninguna</option>' + data.brands.map(b => `<option value="${b}">${b}</option>`).join('');
+                    apBrand.value = currentVal;
+                }
+            }
+            if (data.hero) {
+                updateInput('cfg-hero-image', data.hero.image);
+                updateInput('cfg-hero-subtitle', data.hero.subtitle);
+                updateInput('cfg-hero-title', data.hero.title);
+                
+                if (data.hero.image) document.getElementById('preview-hero-img').src = data.hero.image;
+                document.getElementById('preview-hero-subtitle').textContent = data.hero.subtitle || '';
+                document.getElementById('preview-hero-title').innerHTML = (data.hero.title || '').replace('\\n', '<br />');
+            }
+            updateInput('cfg-offer-end', data.offerEndTime);
+            updateInput('cfg-whatsapp', data.whatsapp);
+            updateInput('cfg-shipping-cost', data.shippingCost || '0.00');
+            updateInput('cfg-shipping-threshold', data.shippingFreeThreshold || '0.00');
+            
+            if (data.covers) {
+                updateInput('cfg-cover-mujer', data.covers.mujer);
+                updateInput('cfg-cover-hombre', data.covers.hombre);
+                updateInput('cfg-cover-ninos', data.covers.ninos);
+                updateInput('cfg-cover-accesorios', data.covers.accesorios);
+            }
         }
-    });
+    }, (err) => console.error("Settings snapshot error:", err));
 };
 
 /* =========================================
@@ -285,7 +454,17 @@ offerCheckbox.addEventListener('change', (e) => {
 document.getElementById('new-product-btn').addEventListener('click', () => {
     productForm.reset();
     document.getElementById('ap-id').value = '';
+    if (document.getElementById('ap-brand')) document.getElementById('ap-brand').value = '';
     document.getElementById('ap-sizes').value = '';
+    
+    // Reset all image fields
+    [1, 2, 3].forEach(idx => {
+        const fileInp = document.getElementById(`ap-image-file-${idx}`);
+        if (fileInp) fileInp.value = '';
+        const preview = document.getElementById(`ap-preview-container-${idx}`);
+        if (preview) preview.classList.add('hidden');
+    });
+
     document.getElementById('product-modal-title').textContent = 'Añadir Producto';
     offerFields.classList.add('hidden');
     productModal.classList.remove('hidden');
@@ -316,10 +495,17 @@ productsTbody.addEventListener('click', async (e) => {
             document.getElementById('ap-name').value = p.name;
             document.getElementById('ap-price').value = p.price;
             document.getElementById('ap-category').value = p.category;
+            if (document.getElementById('ap-brand')) document.getElementById('ap-brand').value = p.brand || '';
             document.getElementById('ap-stock').value = p.stock || 0;
             document.getElementById('ap-sizes').value = p.sizes ? p.sizes.join(', ') : '';
-            document.getElementById('ap-image').value = p.image;
+            
+            // Load Images
+            document.getElementById('ap-image-1').value = p.image || '';
+            document.getElementById('ap-image-2').value = (p.extraImages && p.extraImages[0]) || '';
+            document.getElementById('ap-image-3').value = (p.extraImages && p.extraImages[1]) || '';
+
             document.getElementById('ap-desc').value = p.description || '';
+            document.getElementById('ap-isTrending').checked = p.isTrending || false;
             document.getElementById('ap-isNew').checked = p.isNew || false;
             
             if (p.isOffer) {
@@ -340,26 +526,71 @@ productsTbody.addEventListener('click', async (e) => {
 
 productForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Guardando...';
+        initIcons();
+    }
+
     const isEdit = document.getElementById('ap-id').value;
     const name = document.getElementById('ap-name').value;
     const price = parseFloat(document.getElementById('ap-price').value);
     const category = document.getElementById('ap-category').value;
+    const brand = document.getElementById('ap-brand') ? document.getElementById('ap-brand').value : '';
     const stock = parseInt(document.getElementById('ap-stock').value) || 0;
-    const image = document.getElementById('ap-image').value;
     const desc = document.getElementById('ap-desc').value;
+    const isTrending = document.getElementById('ap-isTrending').checked;
     const isNew = document.getElementById('ap-isNew').checked;
     const isOffer = document.getElementById('ap-isOffer').checked;
     const oldPrice = parseFloat(document.getElementById('ap-oldPrice').value) || null;
     const sizesStr = document.getElementById('ap-sizes').value;
     const sizes = sizesStr ? sizesStr.split(',').map(s=>s.trim()).filter(Boolean) : null;
 
+    // Handle Triple Image Upload
+    let images = [
+        document.getElementById('ap-image-1').value,
+        document.getElementById('ap-image-2').value,
+        document.getElementById('ap-image-3').value
+    ];
+
+    const fileInputs = [
+        document.getElementById('ap-image-file-1'),
+        document.getElementById('ap-image-file-2'),
+        document.getElementById('ap-image-file-3')
+    ];
+
+    for (let i = 0; i < 3; i++) {
+        const file = fileInputs[i]?.files[0];
+        if (file) {
+            try {
+                images[i] = await uploadImage(file);
+            } catch (err) {
+                console.error(`Upload error image ${i+1}:`, err);
+                showToast(`Error al subir imagen ${i+1}`);
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Guardar';
+                    initIcons();
+                }
+                return;
+            }
+        }
+    }
+
+    const mainImage = images[0] || '';
+    const extraImages = images.slice(1).filter(Boolean);
+
     const id = isEdit || name.toLowerCase().replace(/\s+/g, '-');
     const payload = {
-        id, name, price, category, stock, image, description: desc, isNew, isOffer, 
+        id, name, price, category, brand, stock, 
+        image: mainImage, 
+        extraImages: extraImages,
+        description: desc, isTrending, isNew, isOffer, 
         updatedAt: serverTimestamp()
     };
     if (sizes && sizes.length > 0) payload.sizes = sizes;
-    else payload.sizes = null; // Clear if emptied
+    else payload.sizes = null; 
 
     if (isOffer && oldPrice) payload.oldPrice = oldPrice;
     if (!isEdit) payload.createdAt = serverTimestamp();
@@ -370,27 +601,81 @@ productForm.addEventListener('submit', async (e) => {
         productModal.classList.add('hidden');
     } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, 'products');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Guardar';
+            initIcons();
+        }
+    }
+});
+
+let currentProductFilter = 'Todos'; // default
+
+document.getElementById('product-filters')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('product-filter-btn')) {
+        document.querySelectorAll('.product-filter-btn').forEach(btn => {
+            btn.classList.remove('bg-zinc-900', 'text-white', 'border-zinc-900');
+            btn.classList.add('bg-white', 'text-zinc-600', 'border-zinc-200');
+        });
+        e.target.classList.add('bg-zinc-900', 'text-white', 'border-zinc-900');
+        e.target.classList.remove('bg-white', 'text-zinc-600', 'border-zinc-200');
+        
+        currentProductFilter = e.target.dataset.filter;
+        renderProductsTable();
     }
 });
 
 const renderProductsTable = () => {
-    if (allProducts.length === 0) {
-        productsTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-zinc-400">No hay productos.</td></tr>`;
+    // 1. Calculate Metrics
+    const totalCount = allProducts.length;
+    const agotadosCount = allProducts.filter(p => !p.stock || p.stock <= 0).length;
+    const promosCount = allProducts.filter(p => p.isTrending || p.isOffer || p.isNew).length;
+
+    const mTotal = document.getElementById('metric-prod-total');
+    const mAgotados = document.getElementById('metric-prod-agotados');
+    const mPromos = document.getElementById('metric-prod-promos');
+    
+    if (mTotal) mTotal.textContent = totalCount;
+    if (mAgotados) mAgotados.textContent = agotadosCount;
+    if (mPromos) mPromos.textContent = promosCount;
+
+    // 2. Filter Products
+    let filtered = allProducts;
+    if (currentProductFilter === 'Agotados') {
+        filtered = filtered.filter(p => !p.stock || p.stock <= 0);
+    } else if (currentProductFilter === 'Destacados') {
+        filtered = filtered.filter(p => p.isTrending || p.isOffer || p.isNew);
+    } else if (currentProductFilter !== 'Todos') {
+        filtered = filtered.filter(p => p.category === currentProductFilter);
+    }
+
+    if (filtered.length === 0) {
+        productsTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-zinc-400">No hay productos en esta categoría.</td></tr>`;
         return;
     }
-    productsTbody.innerHTML = allProducts.map(p => `
-        <tr class="hover:bg-zinc-50 transition-colors">
+    
+    productsTbody.innerHTML = filtered.map(p => {
+        const isOOS = !p.stock || p.stock <= 0;
+        let rowClass = 'hover:bg-zinc-50 transition-colors border-l-4 border-l-transparent';
+        if (isOOS) {
+            rowClass = 'bg-rose-50/30 hover:bg-rose-50/60 transition-colors border-l-4 border-l-rose-400 opacity-70';
+        }
+
+        return `
+        <tr class="${rowClass}">
             <td class="py-3 px-4 flex items-center gap-3">
                 <img src="${p.image}" class="w-10 h-10 object-cover rounded shadow-sm" alt="img">
-                <span class="font-medium text-sm">${p.name}</span>
+                <span class="font-medium text-sm ${isOOS ? 'text-rose-900 line-through decoration-rose-300' : 'text-zinc-900'}">${p.name}</span>
             </td>
             <td class="py-3 px-4 font-bold">$${(p.price||0).toFixed(2)}</td>
             <td class="py-3 px-4 font-medium text-sm text-zinc-600">${p.category}</td>
             <td class="py-3 px-4">
-                <div class="flex gap-1">
-                    ${p.isNew ? '<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] uppercase font-bold rounded">Nuevo</span>' : ''}
-                    ${p.isOffer ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] uppercase font-bold rounded">Oferta</span>' : ''}
-                    ${p.stock < 5 ? `<span class="px-2 py-0.5 bg-orange-100 text-orange-800 text-[10px] uppercase font-bold rounded">Stock: ${p.stock}</span>` : `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold rounded">Stock: ${p.stock}</span>`}
+                <div class="flex gap-1 flex-wrap">
+                    ${p.isNew ? '<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] uppercase font-bold rounded shadow-sm">Nuevo</span>' : ''}
+                    ${p.isTrending ? '<span class="px-2 py-0.5 bg-violet-100 text-violet-800 text-[10px] uppercase font-bold rounded shadow-sm">Tendencia</span>' : ''}
+                    ${p.isOffer ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] uppercase font-bold rounded shadow-sm">Oferta</span>' : ''}
+                    ${isOOS ? `<span class="px-2 py-0.5 bg-rose-600 text-white text-[10px] uppercase font-bold rounded shadow-sm">Agotado</span>` : (p.stock < 5 ? `<span class="px-2 py-0.5 bg-orange-100 text-orange-800 text-[10px] uppercase font-bold rounded shadow-sm">Stock: ${p.stock}</span>` : `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold rounded shadow-sm">Stock: ${p.stock}</span>`)}
                 </div>
             </td>
             <td class="py-3 px-4 text-right">
@@ -402,7 +687,7 @@ const renderProductsTable = () => {
                 </button>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
     initIcons();
 };
 
@@ -410,49 +695,110 @@ const renderProductsTable = () => {
    ORDERS
    ========================================= */
 const ordersTbody = document.getElementById('orders-tbody');
+let currentOrderFilter = 'Pendiente';
+
+document.getElementById('order-filters')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('order-filter-btn')) {
+        document.querySelectorAll('.order-filter-btn').forEach(btn => {
+            btn.classList.remove('bg-zinc-900', 'text-white', 'border-zinc-900');
+            btn.classList.add('bg-white', 'text-zinc-600', 'border-zinc-200');
+        });
+        e.target.classList.add('bg-zinc-900', 'text-white', 'border-zinc-900');
+        e.target.classList.remove('bg-white', 'text-zinc-600', 'border-zinc-200');
+        
+        currentOrderFilter = e.target.dataset.filter;
+        renderOrdersTable();
+    }
+});
 
 ordersTbody.addEventListener('change', async (e) => {
     if (e.target.classList.contains('status-select')) {
         const id = e.target.dataset.id;
         const newStatus = e.target.value;
+        const selectEl = e.target;
+        selectEl.disabled = true;
+
         try {
             const currentOrder = allOrders.find(o => o.id === id);
-            
-            if (newStatus === 'Entregado' && !currentOrder.stockDeducted) {
-                 // Deduct Stock
+            const oldStatus = currentOrder.status;
+
+            if (newStatus === 'Cancelado' && oldStatus !== 'Cancelado' && currentOrder.stockDeducted !== false) {
+                 // Restore stock
                  for (const item of (currentOrder.items || [])) {
+                     if (!item.productId) continue;
                      const productRef = doc(db, 'products', item.productId);
-                     const prodDoc = await getDoc(productRef);
-                     if (prodDoc.exists()) {
-                         const currentStock = prodDoc.data().stock || 0;
-                         const newStock = Math.max(0, currentStock - (item.quantity || 1));
-                         await updateDoc(productRef, { stock: newStock });
-                     }
+                     await updateDoc(productRef, { stock: increment(item.quantity || 1) });
+                 }
+                 await updateDoc(doc(db, 'orders', id), { status: newStatus, stockDeducted: false });
+                 showToast(`Estado ${newStatus}: Inventario Restaurado`);
+            } 
+            else if (oldStatus === 'Cancelado' && newStatus !== 'Cancelado' && currentOrder.stockDeducted === false) {
+                 // Deduct stock again
+                 for (const item of (currentOrder.items || [])) {
+                     if (!item.productId) continue;
+                     const productRef = doc(db, 'products', item.productId);
+                     await updateDoc(productRef, { stock: increment(-(item.quantity || 1)) });
                  }
                  await updateDoc(doc(db, 'orders', id), { status: newStatus, stockDeducted: true });
-            } else {
+                 showToast(`Estado ${newStatus}: Inventario Descontado`);
+            } 
+            else {
+                 // Normal status change
                  await updateDoc(doc(db, 'orders', id), { status: newStatus });
+                 showToast(`Estado actualizado: ${newStatus}`);
             }
-            
-            showToast(`Estado actualizado: ${newStatus}`);
         } catch(err) {
             handleFirestoreError(err, OperationType.UPDATE, `orders/${id}`);
+            selectEl.value = allOrders.find(o => o.id === id)?.status || 'Pendiente';
+        } finally {
+            selectEl.disabled = false;
         }
     }
 });
 
 const renderOrdersTable = () => {
-    if (allOrders.length === 0) {
-        ordersTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-zinc-400">No hay pedidos registrados.</td></tr>`;
+    // 1. Calculate Metrics (from allOrders)
+    const pendientes = allOrders.filter(o => o.status === 'Pendiente').length;
+    const enviados = allOrders.filter(o => o.status === 'Enviado').length;
+    const ingresos = allOrders.filter(o => o.status === 'Entregado').reduce((sum, o) => sum + (o.total || 0), 0);
+    
+    const mP = document.getElementById('metric-pendientes');
+    const mE = document.getElementById('metric-enviados');
+    const mI = document.getElementById('metric-ingresos');
+    if (mP) mP.textContent = pendientes;
+    if (mE) mE.textContent = enviados;
+    if (mI) mI.textContent = `$${ingresos.toFixed(2)}`;
+
+    // 2. Filter Orders
+    let filtered = allOrders;
+    if (currentOrderFilter !== 'Todos') {
+        filtered = filtered.filter(o => o.status === currentOrderFilter);
+    }
+
+    if (filtered.length === 0) {
+        ordersTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-zinc-400">No hay pedidos registrados para este filtro.</td></tr>`;
         return;
     }
     // Sort descending by date
-    const sorted = [...allOrders].sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
+    const sorted = [...filtered].sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
     
     ordersTbody.innerHTML = sorted.map(o => {
         const dateStr = o.createdAt ? new Date(o.createdAt.toDate()).toLocaleDateString() : 'Desconocido';
+        
+        let rowClass = 'hover:bg-zinc-50 transition-colors border-l-4 border-l-transparent';
+        let selectBg = 'bg-zinc-100';
+        
+        if (o.status === 'Pendiente') {
+            rowClass = 'bg-orange-50/30 hover:bg-orange-50/60 transition-colors border-l-4 border-l-orange-400';
+            selectBg = 'bg-orange-100 text-orange-900 border-none';
+        } else if (o.status === 'Cancelado') {
+            rowClass = 'bg-red-50/30 hover:bg-red-50/60 transition-colors border-l-4 border-l-red-400 opacity-60';
+        } else if (o.status === 'Entregado') {
+            selectBg = 'bg-emerald-100 text-emerald-900 border-none';
+        }
+
         return `
-        <tr class="hover:bg-zinc-50 transition-colors">
+        <tr class="${rowClass}">
             <td class="py-3 px-4 text-sm font-medium text-zinc-600">
                 <div class="font-mono text-xs mb-1 text-black">${o.id}</div>
                 ${dateStr}
@@ -461,9 +807,9 @@ const renderOrdersTable = () => {
                 <div class="font-bold text-sm">${o.userName}</div>
                 <div class="text-xs text-zinc-500">${o.userEmail}</div>
             </td>
-            <td class="py-3 px-4 font-bold text-lg">$${(o.total||0).toFixed(2)}</td>
+            <td class="py-3 px-4 text-sm font-bold">$${(o.total||0).toFixed(2)}</td>
             <td class="py-3 px-4">
-                <select class="status-select text-xs font-bold uppercase border-none rounded bg-zinc-100 px-2 py-1 outline-none cursor-pointer" data-id="${o.id}">
+                <select class="status-select text-xs font-bold uppercase rounded ${selectBg} px-2 py-1 outline-none cursor-pointer" data-id="${o.id}">
                     <option value="Pendiente" ${o.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
                     <option value="Procesando" ${o.status === 'Procesando' ? 'selected' : ''}>Procesando</option>
                     <option value="Enviado" ${o.status === 'Enviado' ? 'selected' : ''}>Enviado</option>
@@ -503,38 +849,44 @@ window.viewOrderDetails = (orderId) => {
     `).join('');
 
     content.innerHTML = `
-        <div class="grid grid-cols-2 gap-4 text-sm mb-2 bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm mb-4 bg-zinc-50 p-6 rounded-2xl border border-zinc-100">
             <div>
-                <p class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Cliente</p>
+                <p class="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2"><i data-lucide="user" class="w-4 h-4"></i> Cliente</p>
                 <p class="font-bold text-zinc-900">${order.userName}</p>
-                <p class="text-zinc-600 text-xs">${order.userEmail}</p>
+                <p class="text-zinc-600 text-xs mt-1 break-all">${order.userEmail}</p>
             </div>
             <div>
-                <p class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Fecha / ID</p>
-                <p class="font-mono text-xs text-zinc-900">${order.id}</p>
-                <p class="text-zinc-600 text-xs mt-1">${dateStr}</p>
+                <p class="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2"><i data-lucide="calendar" class="w-4 h-4"></i> Fecha/ID</p>
+                <p class="text-zinc-600 pb-1 text-xs border-zinc-200 w-fit">${dateStr}</p>
+                <p class="font-mono text-[10px] text-zinc-400 mt-1 uppercase">#${order.id}</p>
             </div>
-            <div class="col-span-2 md:col-span-1 mt-2">
-                <p class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Entrega</p>
-                <p class="font-bold text-zinc-900">${order.deliveryType || 'No especificado'}</p>
-                ${order.logistics ? `<p class="text-zinc-600 mt-1">Empresa: ${order.logistics}</p>` : ''}
+            <div class="col-span-2 md:col-span-1">
+                <p class="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2"><i data-lucide="credit-card" class="w-4 h-4"></i> Pago</p>
+                <p class="font-bold text-emerald-700 bg-emerald-100 inline-block px-2 py-1 rounded-md text-xs border border-emerald-200">${order.paymentMethod || 'N/A'}</p>
             </div>
-            <div class="col-span-2 md:col-span-1 mt-2">
-                <p class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Dirección / Pago</p>
-                <p class="text-zinc-600 break-words leading-tight bg-white p-2 text-xs rounded border border-zinc-200">${order.address || 'N/A'}</p>
-                <p class="font-bold mt-2 text-emerald-600 bg-emerald-50 inline-block px-2 py-1 rounded text-xs border border-emerald-100">Método: ${order.paymentMethod || 'N/A'}</p>
+            <div class="col-span-2 md:col-span-3 pt-4 border-t border-zinc-200/60">
+                <p class="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2"><i data-lucide="map-pin" class="w-4 h-4"></i> Logística de Entrega</p>
+                <div class="flex gap-2 mb-2">
+                   <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded border border-blue-200">${order.deliveryType || 'No especificado'}</span>
+                   ${order.logistics ? `<span class="bg-zinc-200 text-zinc-700 text-xs font-bold px-2 py-1 rounded border border-zinc-300">Empresa: ${order.logistics}</span>` : ''}
+                </div>
+                ${order.deliveryType === 'Envio' && order.address ? `<p class="text-zinc-600 bg-white p-3 text-sm rounded-lg border border-zinc-200 shadow-sm mt-2"><span class="block font-bold text-xs text-zinc-400 mb-1">DIRECCIÓN:</span> ${order.address}</p>` : ''}
             </div>
         </div>
         
-        <div>
-            <h4 class="font-bold text-lg mb-4 text-zinc-900">Artículos</h4>
+        <div class="bg-white border text-sm border-zinc-200 rounded-2xl p-6 shadow-sm mb-2">
+            <h4 class="font-serif italic text-xl mb-4 text-zinc-900 border-b border-zinc-100 pb-2">Artículos Solicitados</h4>
             <div class="max-h-48 overflow-y-auto pr-2">
                 ${itemsHtml}
             </div>
+            <div class="mt-4 pt-4 border-t border-zinc-100 flex flex-col items-end gap-1 text-sm text-zinc-500">
+                <div class="flex justify-between w-full md:w-1/3"><span>Subtotal:</span> <span class="font-bold text-zinc-800">$${(order.subtotal || order.total || 0).toFixed(2)}</span></div>
+                <div class="flex justify-between w-full md:w-1/3"><span>Envío:</span> <span class="font-bold text-zinc-800">${(order.shippingCost === 0 || !order.shippingCost) ? 'Gratis' : '$' + order.shippingCost.toFixed(2)}</span></div>
+            </div>
         </div>
 
-        <div class="flex justify-between items-center bg-zinc-900 text-white p-6 rounded-xl mt-2 shadow-lg">
-            <span class="font-bold text-lg uppercase tracking-widest">Total Pedido</span>
+        <div class="flex justify-between items-center bg-gradient-to-r from-zinc-900 to-zinc-800 text-white p-6 rounded-2xl shadow-xl mt-4">
+            <span class="font-bold text-lg uppercase tracking-widest">Total</span>
             <span class="font-black text-3xl">$${(order.total || 0).toFixed(2)}</span>
         </div>
     `;
@@ -555,20 +907,25 @@ const usersTbody = document.getElementById('users-tbody');
 
 const renderUsersTable = () => {
     if (allUsers.length === 0) {
-        usersTbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-zinc-400">No hay usuarios.</td></tr>`;
+        usersTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-zinc-400">No hay usuarios.</td></tr>`;
         return;
     }
     usersTbody.innerHTML = allUsers.map(u => {
         const lastLogin = u.lastLogin ? new Date(u.lastLogin.toDate()).toLocaleString() : 'Desconocido';
         const roleIcon = u.role === 'admin' ? '<i data-lucide="shield-check" class="w-4 h-4 text-rose-600 inline mr-1"></i>' : '<i data-lucide="user" class="w-4 h-4 text-zinc-400 inline mr-1"></i>';
+        
+        // Count orders for this user
+        const totalPurchasing = allOrders.filter(o => o.userEmail === u.email && o.status !== 'Cancelado').length;
+        
         return `
         <tr class="hover:bg-zinc-50 transition-colors">
             <td class="py-3 px-4 flex items-center gap-3">
                 ${u.photoURL ? `<img src="${u.photoURL}" class="w-8 h-8 rounded-full border border-zinc-200">` : `<div class="w-8 h-8 bg-zinc-200 rounded-full flex items-center justify-center"><i data-lucide="user" class="w-4 h-4 text-zinc-500"></i></div>`}
-                <span class="font-bold text-sm">${u.displayName}</span>
+                <span class="font-bold text-sm">${u.displayName || 'Sin Nombre'}</span>
             </td>
-            <td class="py-3 px-4 text-sm text-zinc-600">${u.email}</td>
+            <td class="py-3 px-4 text-sm text-zinc-600">${u.email || ''}</td>
             <td class="py-3 px-4 text-xs font-bold uppercase">${roleIcon} ${u.role === 'admin' ? 'Admin' : 'Estándar'}</td>
+            <td class="py-3 px-4 text-sm font-bold text-emerald-600">${totalPurchasing}</td>
             <td class="py-3 px-4 text-xs text-zinc-500">${lastLogin}</td>
         </tr>
     `}).join('');
@@ -578,12 +935,93 @@ const renderUsersTable = () => {
 /* =========================================
    SETTINGS
    ========================================= */
+let currentSettingsFilter = 'Todos';
+
+document.getElementById('settings-filters')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('settings-filter-btn')) {
+        document.querySelectorAll('.settings-filter-btn').forEach(btn => {
+            btn.classList.remove('bg-zinc-900', 'text-white', 'border-zinc-900');
+            btn.classList.add('bg-white', 'text-zinc-600', 'border-zinc-200');
+        });
+        e.target.classList.add('bg-zinc-900', 'text-white', 'border-zinc-900');
+        e.target.classList.remove('bg-white', 'text-zinc-600', 'border-zinc-200');
+        
+        currentSettingsFilter = e.target.dataset.filter;
+        
+        const panels = document.querySelectorAll('.settings-panel');
+        if (currentSettingsFilter === 'Todos') {
+            panels.forEach(p => p.classList.remove('hidden'));
+        } else {
+            panels.forEach(p => {
+                if (p.classList.contains(currentSettingsFilter)) {
+                    p.classList.remove('hidden');
+                } else {
+                    p.classList.add('hidden');
+                }
+            });
+        }
+    }
+});
+
+const updateSettingsMetrics = () => {
+    const color = document.getElementById('cfg-color-1-text').value || '#000';
+    const colorEl = document.getElementById('metric-theme-color');
+    if (colorEl) {
+        colorEl.textContent = color;
+        colorEl.style.color = color;
+    }
+    const colorBox = document.getElementById('metric-theme-color-box');
+    if (colorBox) colorBox.style.backgroundColor = color;
+    
+    // Shipping Rule
+    const cost = parseFloat(document.getElementById('cfg-shipping-cost').value) || 0;
+    const thresh = parseFloat(document.getElementById('cfg-shipping-threshold').value) || 0;
+    
+    let shippingText = '';
+    if (thresh > 0) {
+        shippingText = `Fijo $${cost} / Gratis > $${thresh}`;
+    } else if (cost === 0) {
+         shippingText = 'Envío Gratis Global';
+    } else {
+         shippingText = `Fijo: $${cost}`;
+    }
+    const shipEl = document.getElementById('metric-shipping-rule');
+    if (shipEl) shipEl.textContent = shippingText;
+
+    // Offer Rule
+    const offerEnd = document.getElementById('cfg-offer-end').value;
+    const offerRuleEl = document.getElementById('metric-offer-rule');
+    if (offerRuleEl) {
+        if (!offerEnd) {
+             offerRuleEl.textContent = 'Inactiva';
+             offerRuleEl.classList.remove('text-amber-600', 'text-red-500');
+             offerRuleEl.classList.add('text-zinc-400');
+        } else {
+             const endDt = new Date(offerEnd);
+             if (endDt > new Date()) {
+                 offerRuleEl.textContent = `Vence: ${endDt.toLocaleDateString()}`;
+                 offerRuleEl.classList.add('text-amber-600');
+                 offerRuleEl.classList.remove('text-zinc-400', 'text-red-500');
+             } else {
+                 offerRuleEl.textContent = 'Expirada';
+                 offerRuleEl.classList.remove('text-amber-600', 'text-zinc-400');
+                 offerRuleEl.classList.add('text-red-500');
+             }
+        }
+    }
+};
+
 document.getElementById('cfg-color-1').addEventListener('input', (e) => {
     document.getElementById('cfg-color-1-text').value = e.target.value;
+    updateSettingsMetrics();
 });
 document.getElementById('cfg-color-1-text').addEventListener('input', (e) => {
     document.getElementById('cfg-color-1').value = e.target.value;
+    updateSettingsMetrics();
 });
+document.getElementById('cfg-shipping-cost').addEventListener('input', updateSettingsMetrics);
+document.getElementById('cfg-shipping-threshold').addEventListener('input', updateSettingsMetrics);
+document.getElementById('cfg-offer-end').addEventListener('input', updateSettingsMetrics);
 
 // Live Preview of Banner
 document.getElementById('cfg-hero-image').addEventListener('input', (e) => {
@@ -596,35 +1034,194 @@ document.getElementById('cfg-hero-title').addEventListener('input', (e) => {
     document.getElementById('preview-hero-title').innerHTML = e.target.value.replace('\\n', '<br />');
 });
 
+// Footer Builder UI Logic
+const footerBuilderContainer = document.getElementById('footer-builder');
+const addFooterSectionBtn = document.getElementById('add-footer-section');
+
+const renderFooterBuilder = (footerData) => {
+    if (!footerBuilderContainer) return;
+    footerBuilderContainer.innerHTML = '';
+    
+    footerData.forEach((section, sIdx) => {
+        const sectionDiv = document.createElement('div');
+        sectionDiv.className = 'p-4 bg-zinc-50 border border-zinc-200 rounded-xl relative';
+        sectionDiv.innerHTML = `
+            <button class="absolute top-2 right-2 text-zinc-400 hover:text-red-600 transition-colors remove-section-btn" data-idx="${sIdx}">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <div class="mb-4">
+                <label class="block text-[10px] font-bold uppercase text-zinc-400 mb-1">Título de Sección</label>
+                <input type="text" value="${section.title}" class="section-title-input w-full px-3 py-1.5 border rounded focus:border-black outline-none text-sm font-bold">
+            </div>
+            <div class="links-container space-y-2">
+                ${(section.links || []).map((link, lIdx) => `
+                    <div class="flex gap-2 items-center link-row">
+                        <input type="text" value="${link.text}" placeholder="Texto" class="link-text-input flex-1 px-3 py-1.5 border rounded outline-none text-xs">
+                        <input type="text" value="${link.url}" placeholder="URL" class="link-url-input flex-1 px-3 py-1.5 border rounded outline-none text-xs font-mono">
+                        <button class="text-zinc-300 hover:text-red-500 remove-link-btn" data-sidx="${sIdx}" data-lidx="${lIdx}">
+                            <i data-lucide="minus-circle" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="mt-3 text-[10px] font-bold text-blue-600 hover:underline uppercase add-link-btn flex items-center gap-1" data-idx="${sIdx}">
+                <i data-lucide="plus" class="w-3 h-3"></i> Añadir Enlace
+            </button>
+        `;
+        footerBuilderContainer.appendChild(sectionDiv);
+    });
+    initIcons();
+};
+
+footerBuilderContainer?.addEventListener('click', (e) => {
+    const sectionBtn = e.target.closest('.remove-section-btn');
+    const linkBtn = e.target.closest('.remove-link-btn');
+    const addLinkBtn = e.target.closest('.add-link-btn');
+    
+    const getCurrentData = () => {
+        const sections = [];
+        document.querySelectorAll('#footer-builder > div').forEach(div => {
+            const title = div.querySelector('.section-title-input').value;
+            const links = [];
+            div.querySelectorAll('.link-row').forEach(row => {
+                links.push({
+                    text: row.querySelector('.link-text-input').value,
+                    url: row.querySelector('.link-url-input').value
+                });
+            });
+            sections.push({ title, links });
+        });
+        return sections;
+    };
+
+    if (sectionBtn) {
+        const data = getCurrentData();
+        data.splice(sectionBtn.dataset.idx, 1);
+        renderFooterBuilder(data);
+    }
+    if (addLinkBtn) {
+        const data = getCurrentData();
+        data[addLinkBtn.dataset.idx].links.push({ text: '', url: '#' });
+        renderFooterBuilder(data);
+    }
+    if (linkBtn) {
+        const data = getCurrentData();
+        data[linkBtn.dataset.sidx].links.splice(linkBtn.dataset.lidx, 1);
+        renderFooterBuilder(data);
+    }
+});
+
+addFooterSectionBtn?.addEventListener('click', () => {
+    const data = [];
+    document.querySelectorAll('#footer-builder > div').forEach(div => {
+        const title = div.querySelector('.section-title-input').value;
+        const links = [];
+        div.querySelectorAll('.link-row').forEach(row => {
+            links.push({
+                text: row.querySelector('.link-text-input').value,
+                url: row.querySelector('.link-url-input').value
+            });
+        });
+        data.push({ title, links });
+    });
+    data.push({ title: 'Nueva Sección', links: [] });
+    renderFooterBuilder(data);
+});
+
 document.getElementById('save-settings-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('save-settings-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Guardando...';
+    initIcons();
+
+    const storeName = document.getElementById('cfg-store-name').value;
+    const storeDescription = document.getElementById('cfg-store-desc').value;
+    const categoriesRaw = document.getElementById('cfg-categories').value;
+    const categories = categoriesRaw.split(',').map(s => s.trim()).filter(Boolean);
+    
+    // Get Footer Data
+    const footer = [];
+    document.querySelectorAll('#footer-builder > div').forEach(div => {
+        const title = div.querySelector('.section-title-input').value;
+        const links = [];
+        div.querySelectorAll('.link-row').forEach(row => {
+            links.push({
+                text: row.querySelector('.link-text-input').value,
+                url: row.querySelector('.link-url-input').value
+            });
+        });
+        footer.push({ title, links });
+    });
+
     const primaryColor = document.getElementById('cfg-color-1-text').value;
     const brandsRaw = document.getElementById('cfg-brands').value;
     const brands = brandsRaw.split(',').map(s => s.trim()).filter(Boolean);
-    const heroImage = document.getElementById('cfg-hero-image').value;
+    
+    let heroImage = document.getElementById('cfg-hero-image').value;
     const heroSubtitle = document.getElementById('cfg-hero-subtitle').value;
     const heroTitle = document.getElementById('cfg-hero-title').value;
     const offerEndTime = document.getElementById('cfg-offer-end').value;
+    const whatsapp = document.getElementById('cfg-whatsapp').value.replace(/\D/g, ''); 
     const shippingCost = parseFloat(document.getElementById('cfg-shipping-cost').value) || 0;
     const shippingFreeThreshold = parseFloat(document.getElementById('cfg-shipping-threshold').value) || 0;
 
-    const payload = {
-        primaryColor,
-        brands,
-        offerEndTime,
-        shippingCost,
-        shippingFreeThreshold,
-        hero: {
-            image: heroImage,
-            subtitle: heroSubtitle,
-            title: heroTitle
-        },
-        updatedAt: serverTimestamp()
+    const covers = {
+        mujer: document.getElementById('cfg-cover-mujer').value,
+        hombre: document.getElementById('cfg-cover-hombre').value,
+        ninos: document.getElementById('cfg-cover-ninos').value,
+        accesorios: document.getElementById('cfg-cover-accesorios').value
     };
 
     try {
+        // Upload Files if present
+        const heroFile = document.getElementById('cfg-hero-file').files[0];
+        if (heroFile) heroImage = await uploadImage(heroFile, 'branding/hero');
+
+        const coverFiles = {
+            mujer: document.getElementById('cfg-file-mujer').files[0],
+            hombre: document.getElementById('cfg-file-hombre').files[0],
+            ninos: document.getElementById('cfg-file-ninos').files[0],
+            accesorios: document.getElementById('cfg-file-accesorios').files[0]
+        };
+
+        for (const [key, file] of Object.entries(coverFiles)) {
+            if (file) {
+                covers[key] = await uploadImage(file, `branding/covers/${key}`);
+            }
+        }
+
+        const payload = {
+            storeName,
+            storeDescription,
+            categories,
+            footer,
+            primaryColor,
+            brands,
+            offerEndTime,
+            whatsapp,
+            shippingCost,
+            shippingFreeThreshold,
+            hero: {
+                image: heroImage,
+                subtitle: heroSubtitle,
+                title: heroTitle
+            },
+            covers,
+            updatedAt: serverTimestamp()
+        };
+
         await setDoc(doc(db, 'settings', 'site_config'), payload, { merge: true });
         showToast('Configuraciones guardadas y activas en web.');
+        
+        // Reset file inputs
+        document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
+        document.querySelectorAll('input[type="url"]').forEach(input => input.placeholder = "URL de imagen");
+
     } catch(err) {
         handleFirestoreError(err, OperationType.WRITE, 'settings');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Guardar Cambios';
+        initIcons();
     }
 });

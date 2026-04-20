@@ -105,6 +105,7 @@
                         <div>
                             <p class="text-xs text-zinc-500 font-bold uppercase tracking-widest">Usuarios</p>
                             <p class="text-2xl font-black mt-1" id="dash-users">0</p>
+                            <p class="text-xs text-emerald-600 font-bold tracking-tight mt-1" id="dash-recurrentes">Calculando...</p>
                         </div>
                     </div>
                 </div>
@@ -133,6 +134,45 @@
                     <button id="new-product-btn" class="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-md flex items-center gap-2">
                         <i data-lucide="plus" class="w-4 h-4"></i> Nuevo Producto
                     </button>
+                </div>
+
+                <!-- Metrics Dashboard -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-zinc-100 text-zinc-600 flex items-center justify-center">
+                            <i data-lucide="box" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider">Total Catálogo</p>
+                            <h3 class="text-2xl font-black" id="metric-prod-total">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider">Agotados (Stock 0)</p>
+                            <h3 class="text-2xl font-black" id="metric-prod-agotados">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                            <i data-lucide="star" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider">En Promoción</p>
+                            <h3 class="text-2xl font-black" id="metric-prod-promos">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar mb-6 pb-2" id="product-filters">
+                    <button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-zinc-900 text-white shadow-md border border-zinc-900" data-filter="Todos">Todos</button>
+                    <!-- Dynamic categories will be injected here -->
+                    <button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Agotados">Agotados</button>
+                    <button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Destacados">Destacados</button>
                 </div>
                 
                 <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
@@ -185,24 +225,86 @@
                                     </select>
                                 </div>
                                 <div>
+                                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Marca</label>
+                                    <select id="ap-brand" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                        <option value="">Ninguna</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Stock</label>
                                     <input type="number" id="ap-stock" value="10" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
                                 </div>
-                                <div class="col-span-2">
+                                <div class="col-span-2 pt-2">
                                     <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Tallas / Variantes (Opcional)</label>
                                     <p class="text-[10px] text-zinc-500 mb-1 -mt-1">Escribe tallas separadas por coma. Ej: S, M, L, XL, 38, 40</p>
                                     <input type="text" id="ap-sizes" placeholder="Dejar en blanco si es talla única" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono text-sm">
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">URL de Imagen</label>
-                                <input type="url" id="ap-image" required class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="space-y-1">
+                                    <label class="block text-[10px] font-bold uppercase text-zinc-500">Imagen 1 (Principal)</label>
+                                    <div class="flex flex-col gap-2 p-3 border border-dashed border-zinc-200 rounded-xl bg-zinc-50">
+                                        <div class="flex items-center gap-1">
+                                            <input type="file" id="ap-image-file-1" accept="image/*,video/*" class="hidden">
+                                            <button type="button" onclick="document.getElementById('ap-image-file-1').click()" class="bg-white border border-zinc-200 p-2 rounded-lg hover:bg-zinc-100 transition-colors">
+                                                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                                            </button>
+                                            <input type="url" id="ap-image-1" placeholder="URL 1" class="w-full px-2 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                        </div>
+                                        <div id="ap-preview-container-1" class="hidden relative h-16 w-16 rounded-lg overflow-hidden border border-zinc-200">
+                                            <img id="ap-preview-1" src="" class="w-full h-full object-cover">
+                                            <button type="button" id="remove-ap-img-1" class="absolute top-0 right-0 bg-black/60 text-white p-1 rounded-bl-lg">
+                                                <i data-lucide="x" class="w-2 h-2"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[10px] font-bold uppercase text-zinc-500">Imagen 2 (Extra)</label>
+                                    <div class="flex flex-col gap-2 p-3 border border-dashed border-zinc-200 rounded-xl bg-zinc-50">
+                                        <div class="flex items-center gap-1">
+                                            <input type="file" id="ap-image-file-2" accept="image/*,video/*" class="hidden">
+                                            <button type="button" onclick="document.getElementById('ap-image-file-2').click()" class="bg-white border border-zinc-200 p-2 rounded-lg hover:bg-zinc-100 transition-colors">
+                                                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                                            </button>
+                                            <input type="url" id="ap-image-2" placeholder="URL 2" class="w-full px-2 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                        </div>
+                                        <div id="ap-preview-container-2" class="hidden relative h-16 w-16 rounded-lg overflow-hidden border border-zinc-200">
+                                            <img id="ap-preview-2" src="" class="w-full h-full object-cover">
+                                            <button type="button" id="remove-ap-img-2" class="absolute top-0 right-0 bg-black/60 text-white p-1 rounded-bl-lg">
+                                                <i data-lucide="x" class="w-2 h-2"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[10px] font-bold uppercase text-zinc-500">Imagen 3 (Extra)</label>
+                                    <div class="flex flex-col gap-2 p-3 border border-dashed border-zinc-200 rounded-xl bg-zinc-50">
+                                        <div class="flex items-center gap-1">
+                                            <input type="file" id="ap-image-file-3" accept="image/*,video/*" class="hidden">
+                                            <button type="button" onclick="document.getElementById('ap-image-file-3').click()" class="bg-white border border-zinc-200 p-2 rounded-lg hover:bg-zinc-100 transition-colors">
+                                                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                                            </button>
+                                            <input type="url" id="ap-image-3" placeholder="URL 3" class="w-full px-2 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                        </div>
+                                        <div id="ap-preview-container-3" class="hidden relative h-16 w-16 rounded-lg overflow-hidden border border-zinc-200">
+                                            <img id="ap-preview-3" src="" class="w-full h-full object-cover">
+                                            <button type="button" id="remove-ap-img-3" class="absolute top-0 right-0 bg-black/60 text-white p-1 rounded-bl-lg">
+                                                <i data-lucide="x" class="w-2 h-2"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Descripción</label>
                                 <textarea id="ap-desc" rows="2" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none"></textarea>
                             </div>
-                            <div class="flex gap-6 mt-2">
+                            <div class="flex flex-wrap gap-4 mt-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="ap-isTrending" class="w-4 h-4 rounded text-black">
+                                    <span class="text-sm font-medium">Es Tendencia</span>
+                                </label>
                                 <label class="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" id="ap-isNew" class="w-4 h-4 rounded text-black">
                                     <span class="text-sm font-medium">Marcar como "Nuevo"</span>
@@ -229,7 +331,51 @@
 
             <!-- Orders Tab -->
             <section id="tab-orders" class="tab-content">
-                <h2 class="text-3xl font-serif mb-6">Pedidos Recientes</h2>
+                <div class="flex justify-between items-end mb-6">
+                    <h2 class="text-3xl font-serif">Gestión de Pedidos</h2>
+                </div>
+
+                <!-- Metrics Dashboard -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center">
+                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider">Pendientes</p>
+                            <h3 class="text-2xl font-black" id="metric-pendientes">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <i data-lucide="truck" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider">Enviados</p>
+                            <h3 class="text-2xl font-black" id="metric-enviados">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider">Ingresos Entregados</p>
+                            <h3 class="text-2xl font-black" id="metric-ingresos">$0.00</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar mb-6 pb-2" id="order-filters">
+                    <button class="order-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-zinc-900 text-white shadow-md border border-zinc-900" data-filter="Todos">Todos</button>
+                    <button class="order-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Pendiente">Pendientes</button>
+                    <button class="order-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Procesando">Procesando</button>
+                    <button class="order-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Enviado">Enviados</button>
+                    <button class="order-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Entregado">Entregados</button>
+                    <button class="order-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Cancelado">Cancelados</button>
+                </div>
+
                 <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -273,6 +419,7 @@
                                 <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Usuario</th>
                                 <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Email</th>
                                 <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Rol</th>
+                                <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Compras</th>
                                 <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Último Acceso</th>
                             </tr>
                         </thead>
@@ -291,11 +438,63 @@
                         <i data-lucide="save" class="w-4 h-4"></i> Guardar Todo
                     </button>
                 </div>
+
+                <!-- Metrics Dashboard -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 flex-shrink-0 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <i data-lucide="droplet" class="w-6 h-6"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider truncate">Tema Activo</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <div id="metric-theme-color-box" class="w-4 h-4 rounded-full border border-black/10 bg-black"></div>
+                                <h3 class="text-xl font-mono font-black border-none bg-transparent outline-none m-0 p-0" id="metric-theme-color">#000000</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 flex-shrink-0 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i data-lucide="truck" class="w-6 h-6"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider truncate">Regla de Envío</p>
+                            <h3 class="text-lg font-black truncate leading-tight mt-1" id="metric-shipping-rule">Cargando...</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 flex-shrink-0 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <i data-lucide="zap" class="w-6 h-6"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-sm text-zinc-500 font-bold uppercase tracking-wider truncate">Oferta Flash</p>
+                            <h3 class="text-lg font-black truncate leading-tight mt-1" id="metric-offer-rule">Inactiva</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar mb-6 pb-2" id="settings-filters">
+                    <button class="settings-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-zinc-900 text-white shadow-md border border-zinc-900" data-filter="Todos">Todas las Opciones</button>
+                    <button class="settings-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="settings-panel-tema">Identidad y Diseño</button>
+                    <button class="settings-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="settings-panel-categorias">Categorías</button>
+                    <button class="settings-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="settings-panel-footer">Pie de Página (Footer)</button>
+                    <button class="settings-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="settings-panel-envio">Reglas de Envío</button>
+                    <button class="settings-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="settings-panel-banners">Banners y Portadas</button>
+                </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
-                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="palette" class="w-4 h-4 text-zinc-400"></i> Tema y Colores</h3>
+                    <div class="settings-panel settings-panel-tema bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="store" class="w-4 h-4 text-zinc-400"></i> Identidad de la Tienda</h3>
                         <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Nombre de la Tienda</label>
+                                <input type="text" id="cfg-store-name" placeholder="StyleHN" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-serif text-lg font-bold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Descripción (Footer)</label>
+                                <textarea id="cfg-store-desc" rows="2" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm" placeholder="Editorial E-Commerce. All rights reserved."></textarea>
+                            </div>
                             <div>
                                 <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Color Principal (Acentos, Botones)</label>
                                 <div class="flex items-center gap-3 w-full">
@@ -303,20 +502,49 @@
                                     <input type="text" id="cfg-color-1-text" value="#ba0036" class="px-3 py-2 border rounded-lg w-full outline-none focus:border-black font-mono">
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Ofertas del Día (Expira en)</label>
-                                <input type="datetime-local" id="cfg-offer-end" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
-                            </div>
                         </div>
                     </div>
 
-                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
+                    <div class="settings-panel settings-panel-tema bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="clock" class="w-4 h-4 text-zinc-400"></i> Ofertas del Día</h3>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">El contador expira en:</label>
+                            <input type="datetime-local" id="cfg-offer-end" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono text-sm">
+                        </div>
+                    </div>
+
+                    <div class="settings-panel settings-panel-categorias bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm hidden">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="tag" class="w-4 h-4 text-zinc-400"></i> Categorías de Navegación</h3>
+                        <p class="text-xs text-zinc-500 mb-4 tracking-wide">Define las categorías que aparecerán en el menú superior y filtros. Separar por comas.</p>
+                        <textarea id="cfg-categories" rows="3" placeholder="Mujer, Hombre, Niños, Accesorios" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-bold"></textarea>
+                    </div>
+
+                    <div class="settings-panel settings-panel-footer bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm hidden col-span-full">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="columns" class="w-4 h-4 text-zinc-400"></i> Estructura del Footer</h3>
+                        <div id="footer-builder" class="space-y-4">
+                            <!-- JS will inject section editors here -->
+                        </div>
+                        <button id="add-footer-section" class="mt-4 flex items-center gap-2 text-xs font-bold uppercase text-zinc-500 hover:text-black transition-colors cursor-pointer">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i> Añadir Sección
+                        </button>
+                    </div>
+
+                    <div class="settings-panel settings-panel-tema bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
                         <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="flag" class="w-4 h-4 text-zinc-400"></i> Marcas Asociadas</h3>
                         <p class="text-sm text-zinc-500 mb-4">Ingresa nombres separados por comas, O bien un enlace directo a una imagen de logo (http...).</p>
                         <input type="text" id="cfg-brands" placeholder="VOGUE, Prada, GUCCI..." class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-serif">
                     </div>
 
-                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
+                    <div class="settings-panel settings-panel-tema bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="message-circle" class="w-4 h-4 text-zinc-400"></i> Contacto y Atención</h3>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Número de WhatsApp</label>
+                            <input type="tel" id="cfg-whatsapp" placeholder="Ej: 50499999999 (Sin símbolos)" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
+                            <p class="text-[10px] text-zinc-400 mt-1">Ingresa el número con código de área para recibir las órdenes (solo números).</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-panel settings-panel-envio bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
                         <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="truck" class="w-4 h-4 text-zinc-400"></i> Reglas de Envío</h3>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -331,12 +559,28 @@
                         </div>
                     </div>
                     
-                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
+                    <div class="settings-panel settings-panel-banners bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
                         <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="image" class="w-4 h-4 text-zinc-400"></i> Banner Principal (Hero)</h3>
                         <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Imagen URL</label>
-                                <input type="url" id="cfg-hero-image" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            <div class="col-span-2">
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Imagen del Banner</label>
+                                <div class="flex flex-col gap-3 p-3 bg-zinc-50 border border-dashed border-zinc-200 rounded-xl">
+                                    <div class="flex items-center gap-4">
+                                        <input type="file" id="cfg-hero-file" accept="image/*,video/*" class="hidden">
+                                        <button type="button" onclick="document.getElementById('cfg-hero-file').click()" class="bg-white border border-zinc-200 px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-zinc-100 transition-colors flex items-center gap-2">
+                                            <i data-lucide="upload" class="w-3 h-3"></i> Seleccionar Archivo
+                                        </button>
+                                        <input type="url" id="cfg-hero-image" placeholder="O pega el link aquí..." class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                                    </div>
+                                    <div id="cfg-hero-preview-container" class="hidden relative w-full aspect-video rounded-lg overflow-hidden border border-zinc-200 bg-black">
+                                        <div id="cfg-hero-preview-box" class="w-full h-full flex items-center justify-center text-white text-[10px]">
+                                            <!-- Preview content will be injected here -->
+                                        </div>
+                                        <button type="button" id="remove-cfg-hero" class="absolute top-2 right-2 bg-black/60 text-white p-1 rounded-full">
+                                            <i data-lucide="x" class="w-3 h-3"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Subtítulo Pequeño</label>
@@ -350,31 +594,47 @@
                     </div>
 
                     <!-- Portadas de Categorías -->
-                    <div class="bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
+                    <div class="settings-panel settings-panel-banners bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
                         <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="layout-grid" class="w-4 h-4 text-zinc-400"></i> Portadas de Categorías</h3>
                         <p class="text-xs text-zinc-500 mb-4 tracking-wide">Coloca el enlace (URL) de la imagen para cada cuadrícula principal de la tienda.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Mujer</label>
-                                <input type="url" id="cfg-cover-mujer" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold uppercase text-zinc-500">Mujer</label>
+                                <div class="flex gap-2">
+                                    <input type="file" id="cfg-file-mujer" accept="image/*,video/*" class="hidden">
+                                    <button type="button" onclick="document.getElementById('cfg-file-mujer').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-mujer" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Hombre</label>
-                                <input type="url" id="cfg-cover-hombre" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold uppercase text-zinc-500">Hombre</label>
+                                <div class="flex gap-2">
+                                    <input type="file" id="cfg-file-hombre" accept="image/*,video/*" class="hidden">
+                                    <button type="button" onclick="document.getElementById('cfg-file-hombre').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-hombre" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Niños</label>
-                                <input type="url" id="cfg-cover-ninos" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold uppercase text-zinc-500">Niños</label>
+                                <div class="flex gap-2">
+                                    <input type="file" id="cfg-file-ninos" accept="image/*,video/*" class="hidden">
+                                    <button type="button" onclick="document.getElementById('cfg-file-ninos').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-ninos" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Accesorios</label>
-                                <input type="url" id="cfg-cover-accesorios" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-xs">
+                            <div class="space-y-2">
+                                <label class="block text-xs font-bold uppercase text-zinc-500">Accesorios</label>
+                                <div class="flex gap-2">
+                                    <input type="file" id="cfg-file-accesorios" accept="image/*,video/*" class="hidden">
+                                    <button type="button" onclick="document.getElementById('cfg-file-accesorios').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-accesorios" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Live Preview -->
-                    <div class="bg-zinc-100 p-6 border border-zinc-200 rounded-2xl shadow-inner col-span-full flex flex-col items-center">
+                    <div class="settings-panel settings-panel-banners bg-zinc-100 p-6 border border-zinc-200 rounded-2xl shadow-inner col-span-full flex flex-col items-center">
                          <h3 class="font-bold text-lg flex items-center gap-2 text-zinc-500 mb-6"><i data-lucide="monitor" class="w-5 h-5"></i> Vista Previa (Escritorio)</h3>
                          <div class="relative w-full max-w-3xl aspect-[21/9] border-4 border-zinc-200 rounded-xl overflow-hidden shadow-2xl bg-white group">
                              <img id="preview-hero-img" class="w-full h-full object-cover" src="https://via.placeholder.com/1200x500" alt="Hero Preview">
@@ -415,6 +675,20 @@
             <div class="mt-6 text-center">
                 <a href="index.html" class="text-xs text-zinc-500 hover:text-black">Volver a la tienda</a>
             </div>
+        </div>
+    </div>
+
+    <!-- Error Overlay -->
+    <div id="error-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] hidden flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-md rounded-2xl p-8 text-center shadow-2xl">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-2xl font-serif italic mb-4">Algo salió mal</h3>
+            <p id="error-message" class="text-zinc-500 text-sm mb-8 leading-relaxed"></p>
+            <button onclick="window.location.reload()" class="bg-zinc-900 text-white w-full py-4 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
+                Reintentar
+            </button>
         </div>
     </div>
 
