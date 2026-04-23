@@ -1,6 +1,6 @@
 import { auth, db, loginWithGoogle, logout, handleFirestoreError, OperationType } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, updateDoc, increment, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
 // Initialize Lucide icons using the global object from CDN
 const initIcons = () => {
@@ -20,6 +20,7 @@ let globalFilteredProducts = [];
 let currentCategory = null;
 let currentSearchQuery = '';
 let currentBrand = null;
+let appliedCoupon = null;
 
 // Default category based on path
 const pathName = window.location.pathname.toLowerCase();
@@ -456,24 +457,33 @@ onAuthStateChanged(auth, async (user) => {
   if (wishlistUnsubscribe) wishlistUnsubscribe();
 
   if (user) {
-    const isAdminUser = user.email === 'lopezosmedi456@gmail.com';
-    if (isAdminUser) {
-      adminBtn?.classList.remove('hidden');
-      // Update admin button href or behavior to redirect to admin panel
-      adminBtn.onclick = () => window.location.href = 'admin.html';
-    } else {
-      adminBtn?.classList.add('hidden');
-    }
+    let isAdminUser = user.email === 'lopezosmedi456@gmail.com';
+    let existingRole = null;
 
-    // Save user profile for admin panel
-    setDoc(doc(db, 'user_profiles', user.uid), {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || 'Usuario',
-      photoURL: user.photoURL || null,
-      lastLogin: serverTimestamp(),
-      role: isAdminUser ? 'admin' : 'user'
-    }, { merge: true }).catch(e => console.error("Error saving profile", e));
+    // First, fetch existing profile to not overwrite admin roles
+    getDoc(doc(db, 'user_profiles', user.uid)).then((docSnap) => {
+      if (docSnap.exists()) {
+        existingRole = docSnap.data().role;
+        if (existingRole === 'admin') isAdminUser = true;
+      }
+
+      if (isAdminUser) {
+        adminBtn?.classList.remove('hidden');
+        adminBtn.onclick = () => window.location.href = 'admin.html';
+      } else {
+        adminBtn?.classList.add('hidden');
+      }
+
+      // Save user profile 
+      setDoc(doc(db, 'user_profiles', user.uid), {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || 'Usuario',
+        photoURL: user.photoURL || null,
+        lastLogin: serverTimestamp(),
+        role: isAdminUser ? 'admin' : (existingRole || 'user')
+      }, { merge: true }).catch(e => console.error("Error saving profile", e));
+    });
 
     showToast(`Bienvenido, ${user.displayName || 'Usuario'}`);
     if (authBtn) authBtn.innerHTML = `<i data-lucide="user" class="w-5 h-5 text-[#ba0036]"></i>`;
@@ -554,7 +564,7 @@ const startCountdown = (endDateString) => {
 const setupCategoryButtons = () => {
   const scrollBar = document.getElementById('category-scroll-bar');
   if (!scrollBar) return;
-  
+
   const buttons = scrollBar.querySelectorAll('button');
 
   // Highlight active initially
@@ -691,14 +701,34 @@ const updateCheckoutMath = () => {
   const coShippingCostEl = document.getElementById('co-shipping-cost');
   const coFinalTotalEl = document.getElementById('co-final-total');
   const coShippingRow = document.getElementById('co-shipping-row');
+  const coDiscountRow = document.getElementById('co-discount-row');
+  const coDiscountAmountEl = document.getElementById('co-discount-amount');
+  const coDiscountNameEl = document.getElementById('co-discount-name');
 
   if (coSubtotalEl) coSubtotalEl.textContent = `$${subtotal.toFixed(2)}`;
 
+  let discountAmount = 0;
+  if (appliedCoupon && appliedCoupon.active) {
+    if (appliedCoupon.type === 'percentage') {
+      discountAmount = subtotal * (appliedCoupon.discount / 100);
+    } else {
+      discountAmount = appliedCoupon.discount;
+    }
+    if (discountAmount > subtotal) discountAmount = subtotal;
+
+    if (coDiscountRow) coDiscountRow.classList.remove('hidden');
+    if (coDiscountAmountEl) coDiscountAmountEl.textContent = `-$${discountAmount.toFixed(2)}`;
+    if (coDiscountNameEl) coDiscountNameEl.textContent = appliedCoupon.id;
+  } else {
+    if (coDiscountRow) coDiscountRow.classList.add('hidden');
+  }
+
+  let finalSubtotal = subtotal - discountAmount;
   let shipping = 0;
   const deliveryType = coDeliveryType?.value;
 
   if (deliveryType === 'Envio') {
-    if (globalShippingThreshold > 0 && subtotal >= globalShippingThreshold) {
+    if (globalShippingThreshold > 0 && finalSubtotal >= globalShippingThreshold) {
       shipping = 0; // Free shipping
       if (coShippingCostEl) coShippingCostEl.textContent = '¡Gratis!';
     } else {
@@ -713,7 +743,7 @@ const updateCheckoutMath = () => {
     if (coShippingRow) coShippingRow.classList.add('hidden');
   }
 
-  const finalTotal = subtotal + shipping;
+  const finalTotal = finalSubtotal + shipping;
   if (coFinalTotalEl) coFinalTotalEl.textContent = `$${finalTotal.toFixed(2)}`;
 };
 
@@ -727,57 +757,57 @@ const openProductDetails = (id) => {
 
   const mainImg = document.getElementById('pd-image');
   const gallery = document.getElementById('pd-gallery');
-  
+
   // Helper to check if URL is a video
   const isVideo = (url) => {
-      if (!url) return false;
-      return url.includes('/video/upload/') || url.match(/\.(mp4|webm|ogg|mov)$/i);
+    if (!url) return false;
+    return url.includes('/video/upload/') || url.match(/\.(mp4|webm|ogg|mov)$/i);
   };
 
   const setMainMedia = (url) => {
-      if (isVideo(url)) {
-          mainImg.outerHTML = `<video id="pd-image" class="w-full h-full object-cover" src="${url}" controls autoplay muted loop></video>`;
+    if (isVideo(url)) {
+      mainImg.outerHTML = `<video id="pd-image" class="w-full h-full object-cover" src="${url}" controls autoplay muted loop></video>`;
+    } else {
+      const currentMedia = document.getElementById('pd-image');
+      if (currentMedia.tagName === 'VIDEO') {
+        currentMedia.outerHTML = `<img id="pd-image" class="w-full h-full object-cover" src="${url}" alt="Product Image">`;
       } else {
-          const currentMedia = document.getElementById('pd-image');
-          if (currentMedia.tagName === 'VIDEO') {
-              currentMedia.outerHTML = `<img id="pd-image" class="w-full h-full object-cover" src="${url}" alt="Product Image">`;
-          } else {
-              currentMedia.src = url;
-          }
+        currentMedia.src = url;
       }
+    }
   };
 
   setMainMedia(product.image);
 
   // Gallery Logic
   if (gallery) {
-      gallery.innerHTML = '';
-      const allImages = [product.image, ...(product.extraImages || [])].filter(Boolean);
-      
-      if (allImages.length > 1) {
-          gallery.classList.remove('hidden');
-          allImages.forEach(url => {
-              const thumb = document.createElement('div');
-              thumb.className = 'w-16 h-16 rounded-lg overflow-hidden border-2 border-transparent cursor-pointer hover:border-[#ba0036] transition-all flex-shrink-0 bg-zinc-100';
-              
-              if (isVideo(url)) {
-                  thumb.innerHTML = `<video class="w-full h-full object-cover opacity-50" src="${url}"></video>`;
-              } else {
-                  thumb.innerHTML = `<img class="w-full h-full object-cover" src="${url}">`;
-              }
+    gallery.innerHTML = '';
+    const allImages = [product.image, ...(product.extraImages || [])].filter(Boolean);
 
-              thumb.onclick = () => {
-                  setMainMedia(url);
-                  gallery.querySelectorAll('div').forEach(d => d.classList.remove('border-[#ba0036]'));
-                  thumb.classList.add('border-[#ba0036]');
-              };
-              gallery.appendChild(thumb);
-          });
-          // Highlight first
-          gallery.querySelector('div')?.classList.add('border-[#ba0036]');
-      } else {
-          gallery.classList.add('hidden');
-      }
+    if (allImages.length > 1) {
+      gallery.classList.remove('hidden');
+      allImages.forEach(url => {
+        const thumb = document.createElement('div');
+        thumb.className = 'w-16 h-16 rounded-lg overflow-hidden border-2 border-transparent cursor-pointer hover:border-[#ba0036] transition-all flex-shrink-0 bg-zinc-100';
+
+        if (isVideo(url)) {
+          thumb.innerHTML = `<video class="w-full h-full object-cover opacity-50" src="${url}"></video>`;
+        } else {
+          thumb.innerHTML = `<img class="w-full h-full object-cover" src="${url}">`;
+        }
+
+        thumb.onclick = () => {
+          setMainMedia(url);
+          gallery.querySelectorAll('div').forEach(d => d.classList.remove('border-[#ba0036]'));
+          thumb.classList.add('border-[#ba0036]');
+        };
+        gallery.appendChild(thumb);
+      });
+      // Highlight first
+      gallery.querySelector('div')?.classList.add('border-[#ba0036]');
+    } else {
+      gallery.classList.add('hidden');
+    }
   }
 
   document.getElementById('pd-category').textContent = product.category || 'Categoría';
@@ -831,6 +861,27 @@ const openProductDetails = (id) => {
     });
   } else {
     sizesContainer.classList.add('hidden');
+  }
+
+  // Related Products
+  const relatedContainer = document.getElementById('pd-related-container');
+  const relatedDiv = document.getElementById('pd-related');
+  if (relatedContainer && relatedDiv) {
+    const related = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+    if (related.length > 0) {
+      relatedContainer.classList.remove('hidden');
+      relatedDiv.innerHTML = related.map(rp => `
+              <div class="w-32 flex-shrink-0 cursor-pointer group snap-center" onclick="window.openProductDetails('${rp.id}')">
+                  <div class="aspect-[3/4] bg-zinc-100 rounded-lg mb-2 overflow-hidden relative">
+                      <img src="${rp.image}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                  </div>
+                  <p class="text-xs font-serif leading-tight line-clamp-2">${rp.name}</p>
+                  <p class="text-xs font-bold text-[#ba0036]">$${(rp.price || 0).toFixed(2)}</p>
+              </div>
+          `).join('');
+    } else {
+      relatedContainer.classList.add('hidden');
+    }
   }
 
   const modal = document.getElementById('product-details-modal');
@@ -1032,6 +1083,46 @@ const setupGlobalButtons = () => {
     toggleSidebar(checkoutSidebar, true);
   });
 
+  // Coupons
+  document.getElementById('co-apply-coupon')?.addEventListener('click', async () => {
+    const codeEl = document.getElementById('co-coupon-code');
+    const msgEl = document.getElementById('co-coupon-msg');
+    const code = codeEl?.value.trim().toUpperCase();
+
+    if (!code) return;
+
+    msgEl.classList.remove('hidden', 'text-emerald-600', 'text-rose-600');
+    msgEl.textContent = 'Verificando...';
+    msgEl.classList.add('text-zinc-500');
+
+    try {
+      const snap = await getDoc(doc(db, 'coupons', code));
+      if (snap.exists() && snap.data().active) {
+        appliedCoupon = { id: snap.id, ...snap.data() };
+        msgEl.textContent = '¡Cupón aplicado correctamente!';
+        msgEl.classList.replace('text-zinc-500', 'text-emerald-600');
+        updateCheckoutMath();
+      } else {
+        msgEl.textContent = 'El cupón no es válido o ha expirado.';
+        msgEl.classList.replace('text-zinc-500', 'text-rose-600');
+        appliedCoupon = null;
+        updateCheckoutMath();
+      }
+    } catch (err) {
+      msgEl.textContent = 'Error al validar cupón';
+      msgEl.classList.replace('text-zinc-500', 'text-rose-600');
+    }
+  });
+
+  document.getElementById('co-remove-coupon')?.addEventListener('click', () => {
+    appliedCoupon = null;
+    const msgEl = document.getElementById('co-coupon-msg');
+    const codeEl = document.getElementById('co-coupon-code');
+    if (msgEl) msgEl.classList.add('hidden');
+    if (codeEl) codeEl.value = '';
+    updateCheckoutMath();
+  });
+
   coDeliveryType?.addEventListener('change', (e) => {
     if (e.target.value === 'Recoger') {
       coShippingFields?.classList.add('hidden');
@@ -1102,6 +1193,8 @@ const setupGlobalButtons = () => {
         items: cartItems,
         subtotal,
         shippingCost: shippingCostVal,
+        discountAmount: appliedCoupon ? (subtotal + shippingCostVal - total) : 0,
+        couponCode: appliedCoupon ? appliedCoupon.id : null,
         total,
         status: 'Pendiente',
         paymentMethod,
@@ -1123,16 +1216,16 @@ const setupGlobalButtons = () => {
       // Show Success Modal
       const successOverlay = document.getElementById('order-success-overlay');
       const whatsappBtn = document.getElementById('success-whatsapp-btn');
-      
+
       if (successOverlay) {
         successOverlay.classList.remove('hidden');
         successOverlay.classList.add('flex');
-        
+
         // Show WhatsApp button only if number is configured
         if (whatsappBtn) {
           const configStr = localStorage.getItem('stylehn_settings');
           const config = configStr ? JSON.parse(configStr) : {};
-          
+
           if (config.whatsapp) {
             whatsappBtn.classList.remove('hidden');
             whatsappBtn.onclick = () => {
@@ -1142,7 +1235,7 @@ const setupGlobalButtons = () => {
             whatsappBtn.classList.add('hidden');
           }
         }
-        
+
         // Handle Continue Shopping
         const continueBtn = document.getElementById('success-continue-btn');
         if (continueBtn) {
@@ -1356,12 +1449,12 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
 
       if (heroImageEl && config.hero.image) {
         const isVideo = (url) => url && (url.includes('/video/upload/') || url.match(/\.(mp4|webm|ogg|mov)$/i));
-        
+
         if (isVideo(config.hero.image)) {
-            heroImageEl.outerHTML = `<video id="main-hero-img" class="w-full h-full object-cover opacity-90 transition-opacity duration-500 delay-100" src="${config.hero.image}" autoplay muted loop playsinline></video>`;
+          heroImageEl.outerHTML = `<video id="main-hero-img" class="w-full h-full object-cover opacity-90 transition-opacity duration-500 delay-100" src="${config.hero.image}" autoplay muted loop playsinline></video>`;
         } else {
-            heroImageEl.src = config.hero.image;
-            heroImageEl.classList.remove('skeleton');
+          heroImageEl.src = config.hero.image;
+          heroImageEl.classList.remove('skeleton');
         }
       }
       if (heroSubtitleEl && config.hero.subtitle) {
@@ -1397,25 +1490,25 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
       }
 
       // Fallback for html pages without matching IDs (if any left)
-      document.querySelectorAll('img[alt="Mujer"]:not(#cover-mujer-img)').forEach(img => { 
+      document.querySelectorAll('img[alt="Mujer"]:not(#cover-mujer-img)').forEach(img => {
         if (config.covers.mujer) {
           img.src = config.covers.mujer;
           img.classList.remove('skeleton');
         }
       });
-      document.querySelectorAll('img[alt="Hombre"]:not(#cover-hombre-img)').forEach(img => { 
+      document.querySelectorAll('img[alt="Hombre"]:not(#cover-hombre-img)').forEach(img => {
         if (config.covers.hombre) {
           img.src = config.covers.hombre;
           img.classList.remove('skeleton');
         }
       });
-      document.querySelectorAll('img[alt="Niños"]:not(#cover-ninos-img)').forEach(img => { 
+      document.querySelectorAll('img[alt="Niños"]:not(#cover-ninos-img)').forEach(img => {
         if (config.covers.ninos) {
           img.src = config.covers.ninos;
           img.classList.remove('skeleton');
         }
       });
-      document.querySelectorAll('img[alt="Accesorios"]:not(#cover-accesorios-img)').forEach(img => { 
+      document.querySelectorAll('img[alt="Accesorios"]:not(#cover-accesorios-img)').forEach(img => {
         if (config.covers.accesorios) {
           img.src = config.covers.accesorios;
           img.classList.remove('skeleton');
@@ -1452,7 +1545,7 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
 
         leftNav.innerHTML = leftCats.map(cat => `<a class="nav-link text-zinc-500 hover:text-zinc-800 font-serif tracking-tight text-lg" href="#">${cat}</a>`).join('');
         rightNav.innerHTML = rightCats.map(cat => `<a class="nav-link text-zinc-500 hover:text-zinc-800 font-serif tracking-tight text-lg" href="#">${cat}</a>`).join('');
-        
+
         // Add click listeners to nav links for filtering
         [...leftNav.children, ...rightNav.children].forEach(link => {
           link.onclick = (e) => {
@@ -1527,4 +1620,6 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
   }
 });
 
+window.openProductDetails = openProductDetails;
 console.log('StyleHN production-ready JS initialized with Firebase');
+

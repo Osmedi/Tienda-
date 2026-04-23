@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { getFirestore, doc, getDocFromServer } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -18,7 +18,18 @@ export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // Auth helpers
-export const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const loginWithGoogle = () => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const promise = isMobile 
+        ? signInWithRedirect(auth, googleProvider) 
+        : signInWithPopup(auth, googleProvider);
+        
+    return promise.catch(error => {
+        console.error("Error en inicio de sesión:", error);
+        alert("Error de Google Auth: " + error.message);
+        throw error;
+    });
+};
 export const logout = () => signOut(auth);
 
 // Connection test
