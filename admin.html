@@ -36,6 +36,12 @@
             <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-users">
                 <i data-lucide="users" class="w-5 h-5"></i> Usuarios
             </button>
+            <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-coupons">
+                <i data-lucide="tag" class="w-5 h-5"></i> Cupones
+            </button>
+            <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-pos">
+                <i data-lucide="monitor" class="w-5 h-5"></i> Punto de Venta
+            </button>
             <button class="sidebar-link flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-settings">
                 <i data-lucide="settings" class="w-5 h-5"></i> Apariencia
             </button>
@@ -399,15 +405,87 @@
                 <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
                     <div class="p-6 border-b border-zinc-100 flex justify-between items-center">
                         <h3 class="text-xl font-bold" id="order-modal-title">Detalles del Pedido</h3>
-                        <button class="close-order-modal text-zinc-400 hover:text-zinc-900 cursor-pointer">
-                            <i data-lucide="x" class="w-5 h-5"></i>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button id="print-order-btn" class="text-zinc-500 hover:text-zinc-900 flex flex-col items-center cursor-pointer p-2 rounded hover:bg-zinc-100 transition-colors">
+                                <i data-lucide="printer" class="w-5 h-5"></i>
+                                <span class="text-[10px] font-bold uppercase mt-1">Imprimir</span>
+                            </button>
+                            <button class="close-order-modal text-zinc-400 hover:text-zinc-900 cursor-pointer ml-2">
+                                <i data-lucide="x" class="w-5 h-5"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="p-6 overflow-y-auto flex flex-col gap-6" id="order-modal-content">
                         <!-- Content injected via JS -->
                     </div>
                 </div>
             </div>
+
+            <!-- POS / Venta Física Tab -->
+            <section id="tab-pos" class="tab-content relative h-[calc(100vh-160px)] flex flex-col">
+                <div class="flex justify-between items-end mb-4 shrink-0">
+                    <h2 class="text-3xl font-serif">Punto de Venta</h2>
+                </div>
+                
+                <div class="flex-1 flex gap-6 overflow-hidden">
+                    <!-- Left: Product Browser -->
+                    <div class="flex-1 bg-white border border-zinc-200 rounded-2xl flex flex-col overflow-hidden shadow-sm">
+                        <div class="p-4 border-b border-zinc-100 flex gap-2 bg-zinc-50">
+                            <div class="relative flex-1">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400"></i>
+                                <input type="text" id="pos-search" placeholder="Buscar por nombre o ID..." class="w-full pl-9 pr-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
+                            </div>
+                            <select id="pos-category-filter" class="px-3 py-2 border rounded-lg focus:border-black outline-none text-sm bg-white cursor-pointer">
+                                <option value="Todos">Todas las Cat.</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="pos-product-grid">
+                            <!-- Injected by JS -->
+                            <div class="text-zinc-400 text-sm italic col-span-full text-center py-8">Cargando catálogo...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right: Cart & Checkout -->
+                    <div class="w-80 lg:w-96 bg-white border border-zinc-200 rounded-2xl flex flex-col overflow-hidden shadow-sm shrink-0">
+                        <div class="p-4 bg-zinc-900 border-b border-zinc-800 text-white flex justify-between items-center">
+                            <h3 class="font-bold flex items-center gap-2"><i data-lucide="shopping-cart" class="w-4 h-4"></i> Caja Activa</h3>
+                            <button id="pos-clear-cart" class="text-zinc-400 hover:text-white text-[10px] font-bold uppercase tracking-wider">Vaciar</button>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3" id="pos-cart-items">
+                            <div class="text-center text-zinc-400 text-sm italic py-8">Caja vacía. Selecciona productos.</div>
+                        </div>
+                        
+                        <div class="p-4 bg-zinc-50 border-t border-zinc-200 space-y-3">
+                            <div class="flex gap-2">
+                                <input type="number" id="pos-discount" placeholder="Descuento manual ($)" step="0.01" class="flex-1 px-3 py-2 border rounded-lg text-sm outline-none focus:border-black">
+                            </div>
+                            <div class="flex gap-2">
+                                <select id="pos-payment-method" class="w-full px-3 py-2 border rounded-lg text-sm bg-white outline-none focus:border-black">
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
+                                    <option value="Transferencia">Transferencia Bancaria</option>
+                                </select>
+                            </div>
+                            <div class="flex justify-between items-center mt-2 font-bold text-sm text-zinc-500">
+                                <span>Subtotal:</span>
+                                <span id="pos-subtotal">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center font-bold text-sm text-rose-500 hidden" id="pos-discount-row">
+                                <span>Descuento:</span>
+                                <span id="pos-discount-val">-$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-t border-zinc-200">
+                                <span class="font-bold uppercase tracking-wider text-black">Total:</span>
+                                <span class="text-2xl font-black text-black" id="pos-total">$0.00</span>
+                            </div>
+                            <button id="pos-checkout-btn" disabled class="w-full bg-[#ba0036] disabled:bg-zinc-300 disabled:cursor-not-allowed hover:bg-rose-700 text-white rounded-xl py-3 font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors">
+                                <i data-lucide="check-circle" class="w-5 h-5"></i> Cobrar y Finalizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- Users Tab -->
             <section id="tab-users" class="tab-content">
@@ -643,6 +721,65 @@
                                  <h2 id="preview-hero-title" class="text-white text-4xl md:text-5xl font-serif leading-tight">Nueva Colección<br/>2024</h2>
                              </div>
                          </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Coupons Tab -->
+            <section id="tab-coupons" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-serif">Cupones de Descuento</h2>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Config Panel -->
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm col-span-1 h-fit">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="plus-circle" class="w-5 h-5 text-zinc-400"></i> Nuevo Cupón</h3>
+                        <form id="coupon-form" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Código Promocional</label>
+                                <input type="text" id="cp-code" required placeholder="Ej: VERANO20" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono uppercase">
+                                <p class="text-[10px] text-zinc-400 mt-1">Debe ser único. Sin espacios.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Tipo de Descuento</label>
+                                <select id="cp-type" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                    <option value="percentage">Porcentaje (%)</option>
+                                    <option value="fixed">Monto Fijo ($)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Valor</label>
+                                <input type="number" id="cp-discount" required step="0.01" placeholder="Ej: 20" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="cp-active" checked class="w-4 h-4 text-black rounded focus:ring-black">
+                                <label class="text-sm font-medium text-zinc-700">Cupón Activo</label>
+                            </div>
+                            <button type="submit" class="w-full bg-zinc-900 text-white rounded-lg py-3 font-bold text-sm tracking-wide shadow hover:bg-zinc-800 transition-colors disabled:opacity-50">Guardar Cupón</button>
+                        </form>
+                    </div>
+
+                    <!-- Coupons List -->
+                    <div class="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm col-span-1 lg:col-span-2">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="list" class="w-5 h-5 text-zinc-400"></i> Cupones Activos</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-zinc-100">
+                                        <th class="py-3 font-bold text-xs uppercase text-zinc-400 tracking-wider">Código</th>
+                                        <th class="py-3 font-bold text-xs uppercase text-zinc-400 tracking-wider">Descuento</th>
+                                        <th class="py-3 font-bold text-xs uppercase text-zinc-400 tracking-wider">Estado</th>
+                                        <th class="py-3 font-bold text-xs uppercase text-zinc-400 tracking-wider text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coupons-table-body" class="text-sm divide-y divide-zinc-50">
+                                    <tr>
+                                        <td colspan="4" class="py-6 text-center text-zinc-400 font-serif italic">Cargando cupones...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
