@@ -1,4 +1,4 @@
-import { auth, db, logout, handleFirestoreError, OperationType } from './firebase.js';
+import { auth, db, logout, getRedirectResult, handleFirestoreError, OperationType } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { collection, doc, setDoc, deleteDoc, getDoc, onSnapshot, serverTimestamp, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 // Storage logic migrated to Cloudinary
@@ -154,6 +154,11 @@ document.getElementById('remove-cfg-hero')?.addEventListener('click', () => {
 const loginOverlay = document.getElementById('admin-login-overlay');
 const loginForm = document.getElementById('admin-login-form');
 const loginBtn = document.getElementById('login-submit-btn');
+
+// Handle Redirect Result
+if (typeof getRedirectResult === 'function') {
+    getRedirectResult(auth).catch(err => console.error("Error redirect:", err));
+}
 
 // Auth Guard
 onAuthStateChanged(auth, async (user) => {

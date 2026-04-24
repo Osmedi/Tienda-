@@ -1,4 +1,4 @@
-import { auth, db, loginWithGoogle, logout, handleFirestoreError, OperationType } from './firebase.js';
+import { auth, db, loginWithGoogle, logout, getRedirectResult, handleFirestoreError, OperationType } from './firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, updateDoc, increment, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
@@ -447,6 +447,11 @@ const renderWishlist = () => {
 
   initIcons();
 };
+
+// Handle Redirect Result
+if (typeof getRedirectResult === 'function') {
+  getRedirectResult(auth).catch(err => console.error("Error al procesar redirección:", err));
+}
 
 // Auth Logic
 onAuthStateChanged(auth, async (user) => {

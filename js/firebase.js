@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { getFirestore, doc, getDocFromServer } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -19,17 +19,19 @@ export const googleProvider = new GoogleAuthProvider();
 
 // Auth helpers
 export const loginWithGoogle = () => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const promise = isMobile 
-        ? signInWithRedirect(auth, googleProvider) 
-        : signInWithPopup(auth, googleProvider);
-        
-    return promise.catch(error => {
+    // Prefer Popup as it is more reliable for session persistence in many modern browsers
+    return signInWithPopup(auth, googleProvider).catch(error => {
+        // Fallback to redirect only if popup is blocked or fails
+        if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+            return signInWithRedirect(auth, googleProvider);
+        }
         console.error("Error en inicio de sesión:", error);
         alert("Error de Google Auth: " + error.message);
         throw error;
     });
 };
+
+export { getRedirectResult };
 export const logout = () => signOut(auth);
 
 // Connection test
