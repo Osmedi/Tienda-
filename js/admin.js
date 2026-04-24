@@ -1,4 +1,4 @@
-import { auth, db, logout, handleFirestoreError, OperationType } from './firebase.js';
+﻿import { auth, db, logout, handleFirestoreError, OperationType } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { collection, doc, setDoc, deleteDoc, getDoc, onSnapshot, serverTimestamp, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 // Storage logic migrated to Cloudinary
@@ -240,6 +240,7 @@ const loadDashboardData = () => {
         allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         document.getElementById('dash-products').textContent = allProducts.length;
         renderProductsTable();
+        if (typeof renderPosProducts === 'function') renderPosProducts();
     });
 
     // Listen Coupons
@@ -1320,7 +1321,21 @@ if (couponForm) {
     });
 }
 
-    const dateStr = order.createdAt ? new Date(order.createdAt.toDate()).toLocaleString() : new Date().toLocaleString();
+/* =========================================
+   PUNTO DE VENTA (POS) Y FACTURACIÓN
+   ========================================= */
+
+window.printInvoice = (orderIdOrObject) => {
+    let order = typeof orderIdOrObject === 'string' ? allOrders.find(o => o.id === orderIdOrObject) : orderIdOrObject;
+    if (!order && typeof orderIdOrObject === 'string') {
+        const directObj = allOrders.find(o => o.id === orderIdOrObject);
+        if (!directObj) return showToast('Error: Orden no encontrada. Si recién la creó, intente visualizarla desde Pedidos.');
+        order = directObj;
+    }
+    
+    if(!order) return;
+
+    const dateStr = order.createdAt && typeof order.createdAt.toDate === 'function' ? new Date(order.createdAt.toDate()).toLocaleString() : new Date().toLocaleString();
     const itemsHtml = (order.items || []).map(item => `
         <tr style="border-bottom: 1px dashed #ccc;">
             <td style="padding: 4px 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.quantity || 1}x ${item.name}</td>
@@ -1365,7 +1380,7 @@ if (couponForm) {
                 <div>Fecha: ${dateStr}</div>
                 <div>Orden #: ${order.id}</div>
                 <div>Cliente: ${order.userName || 'Consumidor Final'}</div>
-                <div>M�todo: ${order.paymentMethod || 'Efectivo'}</div>
+                <div>Método: ${order.paymentMethod || 'Efectivo'}</div>
             </div>
 
             <div class="divider"></div>
@@ -1390,7 +1405,7 @@ if (couponForm) {
                     <td class="text-right">$${(order.subtotal || order.total || 0).toFixed(2)}</td>
                 </tr>
                 <tr>
-                    <td>Env�o:</td>
+                    <td>Envío:</td>
                     <td class="text-right">${(order.shippingCost === 0 || !order.shippingCost) ? '$0.00' : '$' + order.shippingCost.toFixed(2)}</td>
                 </tr>
                 ${order.discountAmount ? `<tr><td>Descuento:</td><td class="text-right">-$${order.discountAmount.toFixed(2)}</td></tr>` : ''}
@@ -1403,8 +1418,8 @@ if (couponForm) {
             <div class="divider"></div>
             
             <div class="text-center mt-4">
-                <div>�Gracias por su compra!</div>
-                <div style="font-size: 10px; color: #666; margin-top: 5px;">* Documento no v�lido como factura fiscal si no contiene datos impositivos adjuntos *</div>
+                <div>¡Gracias por su compra!</div>
+                <div style="font-size: 10px; color: #666; margin-top: 5px;">* Documento no válido como factura fiscal si no contiene datos impositivos adjuntos *</div>
             </div>
 
             <script>
@@ -1419,9 +1434,6 @@ if (couponForm) {
     printWindow.document.close();
 };
 
-/* =========================================
-   PUNTO DE VENTA (POS)
-   ========================================= */
 let posCart = [];
 const posSearchInput = document.getElementById('pos-search');
 const posCatFilter = document.getElementById('pos-category-filter');
@@ -1440,7 +1452,7 @@ const updatePosCategories = () => {
     if (!posCatFilter) return;
     const cats = [...new Set(allProducts.map(p => p.category))].filter(Boolean);
     const currentValue = posCatFilter.value;
-    posCatFilter.innerHTML = \`<option value="Todos">Todas las Cat.</option>\` + cats.map(c => \`<option value="\${c}">\${c}</option>\`).join('');
+    posCatFilter.innerHTML = `<option value="Todos">Todas las Cat.</option>` + cats.map(c => `<option value="${c}">${c}</option>`).join('');
     if (cats.includes(currentValue)) posCatFilter.value = currentValue;
 };
 
@@ -1463,24 +1475,24 @@ const renderPosProducts = () => {
     }
     
     posGrid.innerHTML = filtered.map(p => {
-        const stockStr = (p.stock > 0) ? \`<span class="text-emerald-500 font-bold">\${p.stock} en disp.</span>\` : \`<span class="text-rose-500 font-bold">Agotado</span>\`;
+        const stockStr = (p.stock > 0) ? `<span class="text-emerald-500 font-bold">${p.stock} en disp.</span>` : `<span class="text-rose-500 font-bold">Agotado</span>`;
         const disabledAttr = p.stock <= 0 ? 'disabled' : '';
         const opacityClass = p.stock <= 0 ? 'opacity-50 grayscale' : '';
         
-        return \`
-        <button class="pos-add-item bg-white border border-zinc-200 rounded-xl overflow-hidden hover:border-black hover:shadow-lg transition-all text-left flex flex-col \${opacityClass}" \${disabledAttr} data-id="\${p.id}">
+        return `
+        <button class="pos-add-item bg-white border border-zinc-200 rounded-xl overflow-hidden hover:border-black hover:shadow-lg transition-all text-left flex flex-col ${opacityClass}" ${disabledAttr} data-id="${p.id}">
             <div class="h-32 w-full bg-zinc-100 flex-shrink-0">
-                \${p.image ? \`<img src="\${p.image}" class="w-full h-full object-cover">\` : \`<div class="w-full h-full flex items-center justify-center text-zinc-300"><i data-lucide="image" class="w-8 h-8"></i></div>\`}
+                ${p.image ? `<img src="${p.image}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-zinc-300"><i data-lucide="image" class="w-8 h-8"></i></div>`}
             </div>
             <div class="p-3 flex-1 flex flex-col">
-                <p class="font-bold text-sm text-zinc-900 leading-tight mb-1 line-clamp-2">\${p.name}</p>
+                <p class="font-bold text-sm text-zinc-900 leading-tight mb-1 line-clamp-2">${p.name}</p>
                 <div class="mt-auto flex justify-between items-end">
-                    <span class="font-black text-black">$\${p.price.toFixed(2)}</span>
-                    <span class="text-[10px]">\${stockStr}</span>
+                    <span class="font-black text-black">$${p.price.toFixed(2)}</span>
+                    <span class="text-[10px]">${stockStr}</span>
                 </div>
             </div>
         </button>
-        \`;
+        `;
     }).join('');
     initIcons();
 };
@@ -1489,7 +1501,7 @@ const renderPosCart = () => {
     if (!posCartContainer) return;
     
     if (posCart.length === 0) {
-        posCartContainer.innerHTML = '<div class="text-center text-zinc-400 text-sm italic py-8">Caja vac�a. Selecciona productos.</div>';
+        posCartContainer.innerHTML = '<div class="text-center text-zinc-400 text-sm italic py-8">Caja vacía. Selecciona productos.</div>';
         posSubtotalEl.textContent = '$0.00';
         posTotalEl.textContent = '$0.00';
         posDiscountRow.classList.add('hidden');
@@ -1497,24 +1509,24 @@ const renderPosCart = () => {
         return;
     }
     
-    posCartContainer.innerHTML = posCart.map((item, idx) => \`
+    posCartContainer.innerHTML = posCart.map((item, idx) => `
         <div class="flex gap-3 bg-zinc-50 border border-zinc-200 p-2 rounded-xl">
             <div class="w-12 h-12 bg-zinc-200 rounded shadow-sm overflow-hidden flex-shrink-0">
-                \${item.image ? \`<img src="\${item.image}" class="w-full h-full object-cover">\` : ''}
+                ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover">` : ''}
             </div>
             <div class="flex-1 flex flex-col justify-center">
-                <p class="text-xs font-bold text-zinc-900 leading-tight line-clamp-1">\${item.name}</p>
+                <p class="text-xs font-bold text-zinc-900 leading-tight line-clamp-1">${item.name}</p>
                 <div class="flex justify-between items-center mt-1">
-                    <span class="font-black text-sm">$\${(item.price * item.quantity).toFixed(2)}</span>
+                    <span class="font-black text-sm">$${(item.price * item.quantity).toFixed(2)}</span>
                     <div class="flex items-center gap-2 bg-white rounded border border-zinc-200 px-1">
-                        <button class="pos-qty-btn text-zinc-500 hover:text-black py-0.5 px-1 font-bold" data-idx="\${idx}" data-diff="-1">-</button>
-                        <span class="text-xs font-bold w-4 text-center">\${item.quantity}</span>
-                        <button class="pos-qty-btn text-zinc-500 hover:text-black py-0.5 px-1 font-bold" data-idx="\${idx}" data-diff="1">+</button>
+                        <button class="pos-qty-btn text-zinc-500 hover:text-black py-0.5 px-1 font-bold" data-idx="${idx}" data-diff="-1">-</button>
+                        <span class="text-xs font-bold w-4 text-center">${item.quantity}</span>
+                        <button class="pos-qty-btn text-zinc-500 hover:text-black py-0.5 px-1 font-bold" data-idx="${idx}" data-diff="1">+</button>
                     </div>
                 </div>
             </div>
         </div>
-    \`).join('');
+    `).join('');
     
     updatePosMath();
 };
@@ -1527,14 +1539,14 @@ const updatePosMath = () => {
     
     const total = subtotal - discount;
     
-    posSubtotalEl.textContent = \`$\${subtotal.toFixed(2)}\`;
+    posSubtotalEl.textContent = `$${subtotal.toFixed(2)}`;
     if (discount > 0) {
         posDiscountRow.classList.remove('hidden');
-        posDiscountVal.textContent = \`-$\${discount.toFixed(2)}\`;
+        posDiscountVal.textContent = `-$${discount.toFixed(2)}`;
     } else {
         posDiscountRow.classList.add('hidden');
     }
-    posTotalEl.textContent = \`$\${total.toFixed(2)}\`;
+    posTotalEl.textContent = `$${total.toFixed(2)}`;
     
     posCheckoutBtn.disabled = posCart.length === 0;
 };
@@ -1584,7 +1596,7 @@ if (posCartContainer) {
             posCart.splice(idx, 1);
         } else if (item.quantity > item.stock) {
             item.quantity = item.stock;
-            showToast('Stock m�ximo alcanzado.');
+            showToast('Stock máximo alcanzado.');
         }
         renderPosCart();
     });
@@ -1594,7 +1606,7 @@ posSearchInput?.addEventListener('input', renderPosProducts);
 posCatFilter?.addEventListener('change', renderPosProducts);
 posDiscountInput?.addEventListener('input', updatePosMath);
 posClearBtn?.addEventListener('click', () => {
-    if (posCart.length > 0 && confirm('�Vaciar la caja?')) {
+    if (posCart.length > 0 && confirm('¿Vaciar la caja?')) {
         posCart = [];
         if (posDiscountInput) posDiscountInput.value = '';
         renderPosCart();
@@ -1627,7 +1639,7 @@ posCheckoutBtn?.addEventListener('click', async () => {
         const orderData = {
             id: orderId,
             userId: 'store-pos',
-            userName: 'Venta F�sica (Local)',
+            userName: 'Venta Física (Local)',
             userEmail: 'admin@local.tienda',
             paymentMethod: method,
             items: posCart.map(item => ({
@@ -1643,7 +1655,7 @@ posCheckoutBtn?.addEventListener('click', async () => {
             discountAmount: discount,
             total,
             status: 'Entregado',
-            deliveryType: 'F�sica / Local',
+            deliveryType: 'Física / Local',
             stockDeducted: true,
             createdAt: serverTimestamp()
         };
@@ -1653,13 +1665,8 @@ posCheckoutBtn?.addEventListener('click', async () => {
         showToast('Venta registrada exitosamente.');
         
         // Ask to Print
-        if (confirm('�Desea imprimir el recibo (Ticket)?')) {
-            // Reconstruct the order object to match printing requirement immediately without waiting for onSnapshot
+        if (confirm('¿Desea imprimir el recibo (Ticket)?')) {
             printInvoice(orderId);
-            // wait, since onSnapshot takes a few MS, printInvoice might fail if it relies entirely on allOrders globally.
-            // Let's pass the locally constructed object just to be safe, or wait a short tick for snapshot.
-            // A quick fix is to wait 1 second or override locally.
-            // For now, I will modify printInvoice to optionally accept an order object directly.
         }
         
         // Clear
@@ -1676,114 +1683,3 @@ posCheckoutBtn?.addEventListener('click', async () => {
         initIcons();
     }
 });
-
-// Update printInvoice to accept order object directly
-const originalPrint = window.printInvoice;
-window.printInvoice = (orderIdOrObject) => {
-    let order = typeof orderIdOrObject === 'string' ? allOrders.find(o => o.id === orderIdOrObject) : orderIdOrObject;
-    if (!order && typeof orderIdOrObject === 'string') {
-        const directObj = allOrders.find(o => o.id === orderIdOrObject);
-        if (!directObj) return showToast('Error: Orden no encontrada. Si reci�n la cre�, intente visualizarla desde Pedidos.');
-        order = directObj;
-    }
-    
-    if(!order) return;
-    
-    const dateStr = order.createdAt && typeof order.createdAt.toDate === 'function' ? new Date(order.createdAt.toDate()).toLocaleString() : new Date().toLocaleString();
-    const itemsHtml = (order.items || []).map(item => \`
-        <tr style="border-bottom: 1px dashed #ccc;">
-            <td style="padding: 4px 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">\${item.quantity || 1}x \${item.name}</td>
-            <td style="padding: 4px 0; text-align: right;">$\${((item.price || 0) * (item.quantity || 1)).toFixed(2)}</td>
-        </tr>
-    \`).join('');
-
-    const storeName = document.getElementById('cfg-store-name')?.value || 'StyleHN';
-
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    printWindow.document.write(\`
-        <html>
-        <head>
-            <title>Factura #\${order.id}</title>
-            <style>
-                body { 
-                    font-family: 'Courier New', Courier, monospace; 
-                    margin: 0; padding: 10px; width: 300px; 
-                    color: #000; font-size: 12px;
-                }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                .font-bold { font-weight: bold; }
-                .text-lg { font-size: 16px; }
-                .mb-2 { margin-bottom: 8px; }
-                .mb-4 { margin-bottom: 16px; }
-                table { width: 100%; border-collapse: collapse; }
-                .divider { border-top: 1px dashed #000; margin: 10px 0; }
-                @media print {
-                    @page { margin: 0; }
-                    body { margin: 0.5cm; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="text-center mb-4">
-                <div class="font-bold text-lg">\${storeName}</div>
-                <div>TICKET DE COMPRA</div>
-            </div>
-            
-            <div class="mb-2">
-                <div>Fecha: \${dateStr}</div>
-                <div>Orden #: \${order.id}</div>
-                <div>Cliente: \${order.userName || 'Consumidor Final'}</div>
-                <div>M�todo: \${order.paymentMethod || 'Efectivo'}</div>
-            </div>
-
-            <div class="divider"></div>
-            
-            <table>
-                <thead>
-                    <tr style="border-bottom: 1px solid #000;">
-                        <th style="text-align: left; padding-bottom: 4px;">Cant. Articulo</th>
-                        <th style="text-align: right; padding-bottom: 4px;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    \${itemsHtml}
-                </tbody>
-            </table>
-
-            <div class="divider"></div>
-
-            <table style="width: 100%;">
-                <tr>
-                    <td>Subtotal:</td>
-                    <td class="text-right">$\${(order.subtotal || order.total || 0).toFixed(2)}</td>
-                </tr>
-                <tr>
-                    <td>Env�o:</td>
-                    <td class="text-right">\${(order.shippingCost === 0 || !order.shippingCost) ? '$0.00' : '$' + order.shippingCost.toFixed(2)}</td>
-                </tr>
-                \${order.discountAmount ? \`<tr><td>Descuento:</td><td class="text-right">-$\${order.discountAmount.toFixed(2)}</td></tr>\` : ''}
-                <tr class="font-bold text-lg">
-                    <td style="padding-top: 5px;">TOTAL:</td>
-                    <td class="text-right" style="padding-top: 5px;">$\${(order.total || 0).toFixed(2)}</td>
-                </tr>
-            </table>
-            
-            <div class="divider"></div>
-            
-            <div class="text-center mt-4">
-                <div>�Gracias por su compra!</div>
-                <div style="font-size: 10px; color: #666; margin-top: 5px;">* Documento no v�lido como factura fiscal si no contiene datos impositivos adjuntos *</div>
-            </div>
-
-            <script>
-                window.onload = function() {
-                    window.print();
-                    setTimeout(function() { window.close(); }, 500);
-                }
-            </script>
-        </body>
-        </html>
-    \`);
-    printWindow.document.close();
-};
