@@ -1160,11 +1160,23 @@ const setupGlobalButtons = () => {
     try {
       const orderRef = doc(collection(db, 'orders'));
 
-      // Calculate final shipping included total before saving to orders
+      // Calculate subtotal
       const subtotal = cartItems.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0);
       const deliveryType = coDeliveryType.value;
       const paymentMethod = document.getElementById('co-payment').value;
 
+      // Calculate Discount
+      let discountAmountVal = 0;
+      if (appliedCoupon && appliedCoupon.active) {
+        if (appliedCoupon.type === 'percentage') {
+          discountAmountVal = subtotal * (appliedCoupon.discount / 100);
+        } else {
+          discountAmountVal = appliedCoupon.discount;
+        }
+        if (discountAmountVal > subtotal) discountAmountVal = subtotal;
+      }
+
+      const finalSubtotal = subtotal - discountAmountVal;
       let logistics = null;
       let address = null;
       let shippingCostVal = 0;
@@ -1172,12 +1184,12 @@ const setupGlobalButtons = () => {
       if (deliveryType === 'Envio') {
         logistics = document.getElementById('co-logistics').value;
         address = document.getElementById('co-address').value;
-        if (globalShippingThreshold === 0 || subtotal < globalShippingThreshold) {
+        if (globalShippingThreshold === 0 || finalSubtotal < globalShippingThreshold) {
           shippingCostVal = globalShippingCost;
         }
       }
 
-      const total = subtotal + shippingCostVal;
+      const finalTotal = finalSubtotal + shippingCostVal;
 
       // Deduct stock in DB immediately
       for (const item of cartItems) {
@@ -1193,9 +1205,9 @@ const setupGlobalButtons = () => {
         items: cartItems,
         subtotal,
         shippingCost: shippingCostVal,
-        discountAmount: appliedCoupon ? (subtotal + shippingCostVal - total) : 0,
+        discountAmount: discountAmountVal,
         couponCode: appliedCoupon ? appliedCoupon.id : null,
-        total,
+        total: finalTotal,
         status: 'Pendiente',
         paymentMethod,
         deliveryType,

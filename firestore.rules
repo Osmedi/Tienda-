@@ -124,7 +124,10 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow create: if (isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid))
+                    && request.resource.data.total == request.resource.data.subtotal + request.resource.data.shippingCost - request.resource.data.discountAmount
+                    && request.resource.data.discountAmount >= 0
+                    && (request.resource.data.discountAmount == 0 || (request.resource.data.couponCode != null && exists(/databases/$(database)/documents/coupons/$(request.resource.data.couponCode))));
       allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow update, delete: if isAdmin();
     }

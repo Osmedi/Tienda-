@@ -1,4 +1,4 @@
-﻿import { auth, db, logout, handleFirestoreError, OperationType } from './firebase.js';
+import { auth, db, logout, handleFirestoreError, OperationType } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { collection, doc, setDoc, deleteDoc, getDoc, onSnapshot, serverTimestamp, updateDoc, increment } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 // Storage logic migrated to Cloudinary
@@ -65,7 +65,7 @@ const CLOUDINARY_UPLOAD_PRESET = 'tienda1_preset';
 
 const uploadImage = async (file) => {
     if (!file) return null;
-    
+
     if (CLOUDINARY_CLOUD_NAME === 'TU_CLOUD_NAME') {
         alert("¡Configuración incompleta!\nPara subir imágenes, primero debes configurar tu 'Cloud Name' y 'Upload Preset' en el archivo js/admin.js.");
         throw new Error("Cloudinary not configured");
@@ -102,7 +102,7 @@ const setupFilePreview = (fileInputId, containerId, previewBoxId, urlInputId) =>
                 const container = document.getElementById(containerId);
                 const box = document.getElementById(previewBoxId);
                 const urlInput = document.getElementById(urlInputId);
-                
+
                 if (container) container.classList.remove('hidden');
                 if (urlInput) urlInput.placeholder = "Archivo seleccionado para subir";
 
@@ -158,49 +158,43 @@ const loginBtn = document.getElementById('login-submit-btn');
 // Auth Guard
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        // Check if user is admin
-        getDoc(doc(db, 'user_profiles', user.uid)).then(async (docSnap) => {
+        try {
+            const docSnap = await getDoc(doc(db, 'user_profiles', user.uid));
             const role = docSnap.exists() ? docSnap.data().role : null;
-            
-            // Allow if strictly the master admin, or if they have the admin role, 
-            // OR if they are a newly created user from Firebase console (no profile yet).
-            if (role === 'admin' || user.email === ADMIN_EMAIL || !docSnap.exists()) {
-                
-                // If it's a new console user, save their profile as admin automatically
-                if (!docSnap.exists() || role !== 'admin') {
+            const isMasterAdmin = user.email === ADMIN_EMAIL;
+
+            if (role === 'admin' || isMasterAdmin) {
+                // Authorized
+                loginOverlay.classList.add('hidden');
+                pageLoader.classList.add('hidden');
+
+                currentUser = user;
+                adminName.textContent = user.displayName || 'Admin Autorizado';
+                adminEmail.textContent = user.email;
+
+                // Sync profile if it's the master admin and doesn't have the role yet
+                if (isMasterAdmin && role !== 'admin') {
                     await setDoc(doc(db, 'user_profiles', user.uid), {
-                        uid: user.uid,
-                        email: user.email,
-                        displayName: user.displayName || 'Admin Autorizado',
                         role: 'admin',
+                        email: user.email,
                         lastLogin: serverTimestamp()
                     }, { merge: true });
                 }
 
-                loginOverlay.classList.add('hidden');
-                pageLoader.classList.add('hidden');
-                
-                currentUser = user;
-                adminName.textContent = user.displayName || 'Admin';
-                adminEmail.textContent = user.email;
-
                 initIcons();
                 loadDashboardData();
             } else {
-                showToast('Acceso denegado. Perfil no autorizado.');
+                // Not an admin
+                showToast('Acceso denegado: Tu cuenta no tiene permisos de administrador.');
                 await logout();
-                pageLoader.classList.add('hidden');
-                loginOverlay.classList.remove('hidden');
+                window.location.href = 'index.html'; // Redirect to home
             }
-        }).catch(async (error) => {
-            console.error("Error al obtener perfil:", error);
-            showToast('Error de permisos en Base de Datos.');
+        } catch (error) {
+            console.error("Auth Guard Error:", error);
+            showToast('Error de seguridad. Contacte al soporte.');
             await logout();
-            pageLoader.classList.add('hidden');
-            loginOverlay.classList.remove('hidden');
-        });
+        }
     } else {
-        // Not logged in
         pageLoader.classList.add('hidden');
         loginOverlay.classList.remove('hidden');
     }
@@ -212,7 +206,7 @@ if (loginForm) {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const pwd = document.getElementById('login-password').value;
-        
+
         loginBtn.disabled = true;
         loginBtn.textContent = 'Verificando...';
 
@@ -220,7 +214,7 @@ if (loginForm) {
             await signInWithEmailAndPassword(auth, email, pwd);
             showToast('Inicio de sesión exitoso');
             // onAuthStateChanged takes over
-        } catch(err) {
+        } catch (err) {
             showToast('Credenciales inválidas');
             console.error(err);
             loginBtn.disabled = false;
@@ -253,18 +247,18 @@ const loadDashboardData = () => {
     onSnapshot(collection(db, 'orders'), (snapshot) => {
         allOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         document.getElementById('dash-orders').textContent = allOrders.length;
-        
+
         const revenue = allOrders.filter(o => o.status === 'Entregado').reduce((sum, order) => sum + (order.total || 0), 0);
         document.getElementById('dash-revenue').textContent = `$${revenue.toFixed(2)}`;
-        
+
         // Calculate Recurrent Clients
         const emailsCount = {};
         let recurrentes = 0;
         let totalUnique = 0;
         allOrders.forEach(o => {
-           if (o.userEmail && o.status !== 'Cancelado') {
-               emailsCount[o.userEmail] = (emailsCount[o.userEmail] || 0) + 1;
-           }
+            if (o.userEmail && o.status !== 'Cancelado') {
+                emailsCount[o.userEmail] = (emailsCount[o.userEmail] || 0) + 1;
+            }
         });
         Object.values(emailsCount).forEach(count => {
             totalUnique++;
@@ -276,7 +270,7 @@ const loadDashboardData = () => {
 
         renderOrdersTable();
         renderCharts();
-        
+
         // Re-render users table to update purchase counts now that orders are updated
         if (allUsers.length > 0) renderUsersTable();
     });
@@ -292,7 +286,7 @@ const loadDashboardData = () => {
     onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
         if (snapshot.exists()) {
             const data = snapshot.data();
-            
+
             // Helper to update input only if not focused
             const updateInput = (id, value) => {
                 const el = document.getElementById(id);
@@ -301,11 +295,11 @@ const loadDashboardData = () => {
 
             updateInput('cfg-store-name', data.storeName);
             updateInput('cfg-store-desc', data.storeDescription);
-            
+
             if (data.categories) {
                 const categoriesStr = data.categories.join(', ');
                 updateInput('cfg-categories', categoriesStr);
-                
+
                 // Populate Product Form Category Dropdown
                 const apCategory = document.getElementById('ap-category');
                 if (apCategory) {
@@ -326,7 +320,7 @@ const loadDashboardData = () => {
                     productFilters.innerHTML = todosBtn + dynamicBtns + extraBtns;
                 }
             }
-            
+
             // Footer Builder (Only update if container is empty or we are not in the builder tab/active)
             if (data.footer) {
                 const builder = document.getElementById('footer-builder');
@@ -334,7 +328,7 @@ const loadDashboardData = () => {
                     renderFooterBuilder(data.footer);
                 }
             }
-            
+
             if (data.primaryColor) {
                 updateInput('cfg-color-1', data.primaryColor);
                 updateInput('cfg-color-1-text', data.primaryColor);
@@ -352,7 +346,7 @@ const loadDashboardData = () => {
                 updateInput('cfg-hero-image', data.hero.image);
                 updateInput('cfg-hero-subtitle', data.hero.subtitle);
                 updateInput('cfg-hero-title', data.hero.title);
-                
+
                 if (data.hero.image) document.getElementById('preview-hero-img').src = data.hero.image;
                 document.getElementById('preview-hero-subtitle').textContent = data.hero.subtitle || '';
                 document.getElementById('preview-hero-title').innerHTML = (data.hero.title || '').replace('\\n', '<br />');
@@ -361,7 +355,7 @@ const loadDashboardData = () => {
             updateInput('cfg-whatsapp', data.whatsapp);
             updateInput('cfg-shipping-cost', data.shippingCost || '0.00');
             updateInput('cfg-shipping-threshold', data.shippingFreeThreshold || '0.00');
-            
+
             if (data.covers) {
                 updateInput('cfg-cover-mujer', data.covers.mujer);
                 updateInput('cfg-cover-hombre', data.covers.hombre);
@@ -463,7 +457,7 @@ document.getElementById('new-product-btn').addEventListener('click', () => {
     document.getElementById('ap-id').value = '';
     if (document.getElementById('ap-brand')) document.getElementById('ap-brand').value = '';
     document.getElementById('ap-sizes').value = '';
-    
+
     // Reset all image fields
     [1, 2, 3].forEach(idx => {
         const fileInp = document.getElementById(`ap-image-file-${idx}`);
@@ -505,7 +499,7 @@ productsTbody.addEventListener('click', async (e) => {
             if (document.getElementById('ap-brand')) document.getElementById('ap-brand').value = p.brand || '';
             document.getElementById('ap-stock').value = p.stock || 0;
             document.getElementById('ap-sizes').value = p.sizes ? p.sizes.join(', ') : '';
-            
+
             // Load Images
             document.getElementById('ap-image-1').value = p.image || '';
             document.getElementById('ap-image-2').value = (p.extraImages && p.extraImages[0]) || '';
@@ -514,7 +508,7 @@ productsTbody.addEventListener('click', async (e) => {
             document.getElementById('ap-desc').value = p.description || '';
             document.getElementById('ap-isTrending').checked = p.isTrending || false;
             document.getElementById('ap-isNew').checked = p.isNew || false;
-            
+
             if (p.isOffer) {
                 document.getElementById('ap-isOffer').checked = true;
                 offerFields.classList.remove('hidden');
@@ -552,7 +546,7 @@ productForm.addEventListener('submit', async (e) => {
     const isOffer = document.getElementById('ap-isOffer').checked;
     const oldPrice = parseFloat(document.getElementById('ap-oldPrice').value) || null;
     const sizesStr = document.getElementById('ap-sizes').value;
-    const sizes = sizesStr ? sizesStr.split(',').map(s=>s.trim()).filter(Boolean) : null;
+    const sizes = sizesStr ? sizesStr.split(',').map(s => s.trim()).filter(Boolean) : null;
 
     // Handle Triple Image Upload
     let images = [
@@ -573,8 +567,8 @@ productForm.addEventListener('submit', async (e) => {
             try {
                 images[i] = await uploadImage(file);
             } catch (err) {
-                console.error(`Upload error image ${i+1}:`, err);
-                showToast(`Error al subir imagen ${i+1}`);
+                console.error(`Upload error image ${i + 1}:`, err);
+                showToast(`Error al subir imagen ${i + 1}`);
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Guardar';
@@ -590,14 +584,14 @@ productForm.addEventListener('submit', async (e) => {
 
     const id = isEdit || name.toLowerCase().replace(/\s+/g, '-');
     const payload = {
-        id, name, price, category, brand, stock, 
-        image: mainImage, 
+        id, name, price, category, brand, stock,
+        image: mainImage,
         extraImages: extraImages,
-        description: desc, isTrending, isNew, isOffer, 
+        description: desc, isTrending, isNew, isOffer,
         updatedAt: serverTimestamp()
     };
     if (sizes && sizes.length > 0) payload.sizes = sizes;
-    else payload.sizes = null; 
+    else payload.sizes = null;
 
     if (isOffer && oldPrice) payload.oldPrice = oldPrice;
     if (!isEdit) payload.createdAt = serverTimestamp();
@@ -627,7 +621,7 @@ document.getElementById('product-filters')?.addEventListener('click', (e) => {
         });
         e.target.classList.add('bg-zinc-900', 'text-white', 'border-zinc-900');
         e.target.classList.remove('bg-white', 'text-zinc-600', 'border-zinc-200');
-        
+
         currentProductFilter = e.target.dataset.filter;
         renderProductsTable();
     }
@@ -642,7 +636,7 @@ const renderProductsTable = () => {
     const mTotal = document.getElementById('metric-prod-total');
     const mAgotados = document.getElementById('metric-prod-agotados');
     const mPromos = document.getElementById('metric-prod-promos');
-    
+
     if (mTotal) mTotal.textContent = totalCount;
     if (mAgotados) mAgotados.textContent = agotadosCount;
     if (mPromos) mPromos.textContent = promosCount;
@@ -661,7 +655,7 @@ const renderProductsTable = () => {
         productsTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-zinc-400">No hay productos en esta categoría.</td></tr>`;
         return;
     }
-    
+
     productsTbody.innerHTML = filtered.map(p => {
         const isOOS = !p.stock || p.stock <= 0;
         let rowClass = 'hover:bg-zinc-50 transition-colors border-l-4 border-l-transparent';
@@ -675,7 +669,7 @@ const renderProductsTable = () => {
                 <img src="${p.image}" class="w-10 h-10 object-cover rounded shadow-sm" alt="img">
                 <span class="font-medium text-sm ${isOOS ? 'text-rose-900 line-through decoration-rose-300' : 'text-zinc-900'}">${p.name}</span>
             </td>
-            <td class="py-3 px-4 font-bold">$${(p.price||0).toFixed(2)}</td>
+            <td class="py-3 px-4 font-bold">$${(p.price || 0).toFixed(2)}</td>
             <td class="py-3 px-4 font-medium text-sm text-zinc-600">${p.category}</td>
             <td class="py-3 px-4">
                 <div class="flex gap-1 flex-wrap">
@@ -712,7 +706,7 @@ document.getElementById('order-filters')?.addEventListener('click', (e) => {
         });
         e.target.classList.add('bg-zinc-900', 'text-white', 'border-zinc-900');
         e.target.classList.remove('bg-white', 'text-zinc-600', 'border-zinc-200');
-        
+
         currentOrderFilter = e.target.dataset.filter;
         renderOrdersTable();
     }
@@ -730,31 +724,31 @@ ordersTbody.addEventListener('change', async (e) => {
             const oldStatus = currentOrder.status;
 
             if (newStatus === 'Cancelado' && oldStatus !== 'Cancelado' && currentOrder.stockDeducted !== false) {
-                 // Restore stock
-                 for (const item of (currentOrder.items || [])) {
-                     if (!item.productId) continue;
-                     const productRef = doc(db, 'products', item.productId);
-                     await updateDoc(productRef, { stock: increment(item.quantity || 1) });
-                 }
-                 await updateDoc(doc(db, 'orders', id), { status: newStatus, stockDeducted: false });
-                 showToast(`Estado ${newStatus}: Inventario Restaurado`);
-            } 
-            else if (oldStatus === 'Cancelado' && newStatus !== 'Cancelado' && currentOrder.stockDeducted === false) {
-                 // Deduct stock again
-                 for (const item of (currentOrder.items || [])) {
-                     if (!item.productId) continue;
-                     const productRef = doc(db, 'products', item.productId);
-                     await updateDoc(productRef, { stock: increment(-(item.quantity || 1)) });
-                 }
-                 await updateDoc(doc(db, 'orders', id), { status: newStatus, stockDeducted: true });
-                 showToast(`Estado ${newStatus}: Inventario Descontado`);
-            } 
-            else {
-                 // Normal status change
-                 await updateDoc(doc(db, 'orders', id), { status: newStatus });
-                 showToast(`Estado actualizado: ${newStatus}`);
+                // Restore stock
+                for (const item of (currentOrder.items || [])) {
+                    if (!item.productId) continue;
+                    const productRef = doc(db, 'products', item.productId);
+                    await updateDoc(productRef, { stock: increment(item.quantity || 1) });
+                }
+                await updateDoc(doc(db, 'orders', id), { status: newStatus, stockDeducted: false });
+                showToast(`Estado ${newStatus}: Inventario Restaurado`);
             }
-        } catch(err) {
+            else if (oldStatus === 'Cancelado' && newStatus !== 'Cancelado' && currentOrder.stockDeducted === false) {
+                // Deduct stock again
+                for (const item of (currentOrder.items || [])) {
+                    if (!item.productId) continue;
+                    const productRef = doc(db, 'products', item.productId);
+                    await updateDoc(productRef, { stock: increment(-(item.quantity || 1)) });
+                }
+                await updateDoc(doc(db, 'orders', id), { status: newStatus, stockDeducted: true });
+                showToast(`Estado ${newStatus}: Inventario Descontado`);
+            }
+            else {
+                // Normal status change
+                await updateDoc(doc(db, 'orders', id), { status: newStatus });
+                showToast(`Estado actualizado: ${newStatus}`);
+            }
+        } catch (err) {
             handleFirestoreError(err, OperationType.UPDATE, `orders/${id}`);
             selectEl.value = allOrders.find(o => o.id === id)?.status || 'Pendiente';
         } finally {
@@ -768,7 +762,7 @@ const renderOrdersTable = () => {
     const pendientes = allOrders.filter(o => o.status === 'Pendiente').length;
     const enviados = allOrders.filter(o => o.status === 'Enviado').length;
     const ingresos = allOrders.filter(o => o.status === 'Entregado').reduce((sum, o) => sum + (o.total || 0), 0);
-    
+
     const mP = document.getElementById('metric-pendientes');
     const mE = document.getElementById('metric-enviados');
     const mI = document.getElementById('metric-ingresos');
@@ -787,14 +781,14 @@ const renderOrdersTable = () => {
         return;
     }
     // Sort descending by date
-    const sorted = [...filtered].sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-    
+    const sorted = [...filtered].sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+
     ordersTbody.innerHTML = sorted.map(o => {
         const dateStr = o.createdAt ? new Date(o.createdAt.toDate()).toLocaleDateString() : 'Desconocido';
-        
+
         let rowClass = 'hover:bg-zinc-50 transition-colors border-l-4 border-l-transparent';
         let selectBg = 'bg-zinc-100';
-        
+
         if (o.status === 'Pendiente') {
             rowClass = 'bg-orange-50/30 hover:bg-orange-50/60 transition-colors border-l-4 border-l-orange-400';
             selectBg = 'bg-orange-100 text-orange-900 border-none';
@@ -814,7 +808,7 @@ const renderOrdersTable = () => {
                 <div class="font-bold text-sm">${o.userName}</div>
                 <div class="text-xs text-zinc-500">${o.userEmail}</div>
             </td>
-            <td class="py-3 px-4 text-sm font-bold">$${(o.total||0).toFixed(2)}</td>
+            <td class="py-3 px-4 text-sm font-bold">$${(o.total || 0).toFixed(2)}</td>
             <td class="py-3 px-4">
                 <select class="status-select text-xs font-bold uppercase rounded ${selectBg} px-2 py-1 outline-none cursor-pointer" data-id="${o.id}">
                     <option value="Pendiente" ${o.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
@@ -840,7 +834,7 @@ window.viewOrderDetails = (orderId) => {
 
     const modal = document.getElementById('order-modal');
     const content = document.getElementById('order-modal-content');
-    
+
     const printBtn = document.getElementById('print-order-btn');
     if (printBtn) {
         printBtn.onclick = () => printInvoice(orderId);
@@ -925,10 +919,10 @@ const renderUsersTable = () => {
     usersTbody.innerHTML = allUsers.map(u => {
         const lastLogin = u.lastLogin ? new Date(u.lastLogin.toDate()).toLocaleString() : 'Desconocido';
         const roleIcon = u.role === 'admin' ? '<i data-lucide="shield-check" class="w-4 h-4 text-rose-600 inline mr-1"></i>' : '<i data-lucide="user" class="w-4 h-4 text-zinc-400 inline mr-1"></i>';
-        
+
         // Count orders for this user
         const totalPurchasing = allOrders.filter(o => o.userEmail === u.email && o.status !== 'Cancelado').length;
-        
+
         return `
         <tr class="hover:bg-zinc-50 transition-colors">
             <td class="py-3 px-4 flex items-center gap-3">
@@ -957,9 +951,9 @@ document.getElementById('settings-filters')?.addEventListener('click', (e) => {
         });
         e.target.classList.add('bg-zinc-900', 'text-white', 'border-zinc-900');
         e.target.classList.remove('bg-white', 'text-zinc-600', 'border-zinc-200');
-        
+
         currentSettingsFilter = e.target.dataset.filter;
-        
+
         const panels = document.querySelectorAll('.settings-panel');
         if (currentSettingsFilter === 'Todos') {
             panels.forEach(p => p.classList.remove('hidden'));
@@ -984,18 +978,18 @@ const updateSettingsMetrics = () => {
     }
     const colorBox = document.getElementById('metric-theme-color-box');
     if (colorBox) colorBox.style.backgroundColor = color;
-    
+
     // Shipping Rule
     const cost = parseFloat(document.getElementById('cfg-shipping-cost').value) || 0;
     const thresh = parseFloat(document.getElementById('cfg-shipping-threshold').value) || 0;
-    
+
     let shippingText = '';
     if (thresh > 0) {
         shippingText = `Fijo $${cost} / Gratis > $${thresh}`;
     } else if (cost === 0) {
-         shippingText = 'Envío Gratis Global';
+        shippingText = 'Envío Gratis Global';
     } else {
-         shippingText = `Fijo: $${cost}`;
+        shippingText = `Fijo: $${cost}`;
     }
     const shipEl = document.getElementById('metric-shipping-rule');
     if (shipEl) shipEl.textContent = shippingText;
@@ -1005,20 +999,20 @@ const updateSettingsMetrics = () => {
     const offerRuleEl = document.getElementById('metric-offer-rule');
     if (offerRuleEl) {
         if (!offerEnd) {
-             offerRuleEl.textContent = 'Inactiva';
-             offerRuleEl.classList.remove('text-amber-600', 'text-red-500');
-             offerRuleEl.classList.add('text-zinc-400');
+            offerRuleEl.textContent = 'Inactiva';
+            offerRuleEl.classList.remove('text-amber-600', 'text-red-500');
+            offerRuleEl.classList.add('text-zinc-400');
         } else {
-             const endDt = new Date(offerEnd);
-             if (endDt > new Date()) {
-                 offerRuleEl.textContent = `Vence: ${endDt.toLocaleDateString()}`;
-                 offerRuleEl.classList.add('text-amber-600');
-                 offerRuleEl.classList.remove('text-zinc-400', 'text-red-500');
-             } else {
-                 offerRuleEl.textContent = 'Expirada';
-                 offerRuleEl.classList.remove('text-amber-600', 'text-zinc-400');
-                 offerRuleEl.classList.add('text-red-500');
-             }
+            const endDt = new Date(offerEnd);
+            if (endDt > new Date()) {
+                offerRuleEl.textContent = `Vence: ${endDt.toLocaleDateString()}`;
+                offerRuleEl.classList.add('text-amber-600');
+                offerRuleEl.classList.remove('text-zinc-400', 'text-red-500');
+            } else {
+                offerRuleEl.textContent = 'Expirada';
+                offerRuleEl.classList.remove('text-amber-600', 'text-zinc-400');
+                offerRuleEl.classList.add('text-red-500');
+            }
         }
     }
 };
@@ -1053,7 +1047,7 @@ const addFooterSectionBtn = document.getElementById('add-footer-section');
 const renderFooterBuilder = (footerData) => {
     if (!footerBuilderContainer) return;
     footerBuilderContainer.innerHTML = '';
-    
+
     footerData.forEach((section, sIdx) => {
         const sectionDiv = document.createElement('div');
         sectionDiv.className = 'p-4 bg-zinc-50 border border-zinc-200 rounded-xl relative';
@@ -1089,7 +1083,7 @@ footerBuilderContainer?.addEventListener('click', (e) => {
     const sectionBtn = e.target.closest('.remove-section-btn');
     const linkBtn = e.target.closest('.remove-link-btn');
     const addLinkBtn = e.target.closest('.add-link-btn');
-    
+
     const getCurrentData = () => {
         const sections = [];
         document.querySelectorAll('#footer-builder > div').forEach(div => {
@@ -1150,7 +1144,7 @@ document.getElementById('save-settings-btn').addEventListener('click', async () 
     const storeDescription = document.getElementById('cfg-store-desc').value;
     const categoriesRaw = document.getElementById('cfg-categories').value;
     const categories = categoriesRaw.split(',').map(s => s.trim()).filter(Boolean);
-    
+
     // Get Footer Data
     const footer = [];
     document.querySelectorAll('#footer-builder > div').forEach(div => {
@@ -1168,12 +1162,12 @@ document.getElementById('save-settings-btn').addEventListener('click', async () 
     const primaryColor = document.getElementById('cfg-color-1-text').value;
     const brandsRaw = document.getElementById('cfg-brands').value;
     const brands = brandsRaw.split(',').map(s => s.trim()).filter(Boolean);
-    
+
     let heroImage = document.getElementById('cfg-hero-image').value;
     const heroSubtitle = document.getElementById('cfg-hero-subtitle').value;
     const heroTitle = document.getElementById('cfg-hero-title').value;
     const offerEndTime = document.getElementById('cfg-offer-end').value;
-    const whatsapp = document.getElementById('cfg-whatsapp').value.replace(/\D/g, ''); 
+    const whatsapp = document.getElementById('cfg-whatsapp').value.replace(/\D/g, '');
     const shippingCost = parseFloat(document.getElementById('cfg-shipping-cost').value) || 0;
     const shippingFreeThreshold = parseFloat(document.getElementById('cfg-shipping-threshold').value) || 0;
 
@@ -1224,12 +1218,12 @@ document.getElementById('save-settings-btn').addEventListener('click', async () 
 
         await setDoc(doc(db, 'settings', 'site_config'), payload, { merge: true });
         showToast('Configuraciones guardadas y activas en web.');
-        
+
         // Reset file inputs
         document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
         document.querySelectorAll('input[type="url"]').forEach(input => input.placeholder = "URL de imagen");
 
-    } catch(err) {
+    } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, 'settings');
     } finally {
         btn.disabled = false;
@@ -1247,7 +1241,7 @@ const couponForm = document.getElementById('coupon-form');
 
 const renderCoupons = () => {
     if (!couponsTableBody) return;
-    
+
     if (allCoupons.length === 0) {
         couponsTableBody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-zinc-400 font-serif italic">No hay cupones creados</td></tr>`;
         return;
@@ -1255,10 +1249,10 @@ const renderCoupons = () => {
 
     couponsTableBody.innerHTML = allCoupons.map(c => {
         const valStr = c.type === 'percentage' ? `${c.discount}%` : `$${c.discount.toFixed(2)}`;
-        const statusBadge = c.active 
+        const statusBadge = c.active
             ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Activo</span>`
             : `<span class="bg-zinc-200 text-zinc-600 px-2 py-1 rounded text-[10px] font-bold uppercase">Inactivo</span>`;
-            
+
         return `
             <tr class="hover:bg-zinc-50 border-b border-zinc-100 last:border-0">
                 <td class="py-3 font-mono font-bold text-black uppercase">${c.id}</td>
@@ -1272,7 +1266,7 @@ const renderCoupons = () => {
             </tr>
         `;
     }).join('');
-    
+
     // Attach delete listeners
     document.querySelectorAll('.delete-coupon-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -1281,7 +1275,7 @@ const renderCoupons = () => {
             try {
                 await deleteDoc(doc(db, 'coupons', id));
                 showToast('Cupón eliminado.');
-            } catch(err) {
+            } catch (err) {
                 handleFirestoreError(err, OperationType.DELETE, `coupons/${id}`);
             }
         });
@@ -1296,9 +1290,9 @@ if (couponForm) {
         const type = document.getElementById('cp-type').value;
         const discount = parseFloat(document.getElementById('cp-discount').value);
         const active = document.getElementById('cp-active').checked;
-        
+
         if (!code) return;
-        
+
         const btn = e.target.querySelector('button');
         btn.disabled = true;
         btn.textContent = 'Guardando...';
@@ -1312,7 +1306,7 @@ if (couponForm) {
             });
             showToast('Cupón guardado.');
             couponForm.reset();
-        } catch(err) {
+        } catch (err) {
             handleFirestoreError(err, OperationType.CREATE, `coupons/${code}`);
         } finally {
             btn.disabled = false;
@@ -1332,8 +1326,8 @@ window.printInvoice = (orderIdOrObject) => {
         if (!directObj) return showToast('Error: Orden no encontrada. Si recién la creó, intente visualizarla desde Pedidos.');
         order = directObj;
     }
-    
-    if(!order) return;
+
+    if (!order) return;
 
     const dateStr = order.createdAt && typeof order.createdAt.toDate === 'function' ? new Date(order.createdAt.toDate()).toLocaleString() : new Date().toLocaleString();
     const itemsHtml = (order.items || []).map(item => `
@@ -1459,26 +1453,26 @@ const updatePosCategories = () => {
 const renderPosProducts = () => {
     if (!posGrid) return;
     updatePosCategories();
-    
+
     const query = (posSearchInput.value || '').toLowerCase();
     const cat = posCatFilter.value;
-    
+
     let filtered = allProducts;
     if (cat !== 'Todos') filtered = filtered.filter(p => p.category === cat);
     if (query) {
         filtered = filtered.filter(p => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query));
     }
-    
+
     if (filtered.length === 0) {
         posGrid.innerHTML = '<div class="text-zinc-400 text-sm italic col-span-full text-center py-8">No se encontraron productos.</div>';
         return;
     }
-    
+
     posGrid.innerHTML = filtered.map(p => {
         const stockStr = (p.stock > 0) ? `<span class="text-emerald-500 font-bold">${p.stock} en disp.</span>` : `<span class="text-rose-500 font-bold">Agotado</span>`;
         const disabledAttr = p.stock <= 0 ? 'disabled' : '';
         const opacityClass = p.stock <= 0 ? 'opacity-50 grayscale' : '';
-        
+
         return `
         <button class="pos-add-item bg-white border border-zinc-200 rounded-xl overflow-hidden hover:border-black hover:shadow-lg transition-all text-left flex flex-col ${opacityClass}" ${disabledAttr} data-id="${p.id}">
             <div class="h-32 w-full bg-zinc-100 flex-shrink-0">
@@ -1499,7 +1493,7 @@ const renderPosProducts = () => {
 
 const renderPosCart = () => {
     if (!posCartContainer) return;
-    
+
     if (posCart.length === 0) {
         posCartContainer.innerHTML = '<div class="text-center text-zinc-400 text-sm italic py-8">Caja vacía. Selecciona productos.</div>';
         posSubtotalEl.textContent = '$0.00';
@@ -1508,7 +1502,7 @@ const renderPosCart = () => {
         posCheckoutBtn.disabled = true;
         return;
     }
-    
+
     posCartContainer.innerHTML = posCart.map((item, idx) => `
         <div class="flex gap-3 bg-zinc-50 border border-zinc-200 p-2 rounded-xl">
             <div class="w-12 h-12 bg-zinc-200 rounded shadow-sm overflow-hidden flex-shrink-0">
@@ -1527,7 +1521,7 @@ const renderPosCart = () => {
             </div>
         </div>
     `).join('');
-    
+
     updatePosMath();
 };
 
@@ -1536,9 +1530,9 @@ const updatePosMath = () => {
     let discount = parseFloat(posDiscountInput?.value) || 0;
     if (discount < 0) discount = 0;
     if (discount > subtotal) discount = subtotal; // Cannot discount more than subtotal
-    
+
     const total = subtotal - discount;
-    
+
     posSubtotalEl.textContent = `$${subtotal.toFixed(2)}`;
     if (discount > 0) {
         posDiscountRow.classList.remove('hidden');
@@ -1547,7 +1541,7 @@ const updatePosMath = () => {
         posDiscountRow.classList.add('hidden');
     }
     posTotalEl.textContent = `$${total.toFixed(2)}`;
-    
+
     posCheckoutBtn.disabled = posCart.length === 0;
 };
 
@@ -1559,7 +1553,7 @@ if (posGrid) {
         const id = btn.dataset.id;
         const product = allProducts.find(p => p.id === id);
         if (!product || product.stock <= 0) return;
-        
+
         const existing = posCart.find(item => item.id === id);
         if (existing) {
             if (existing.quantity < product.stock) {
@@ -1587,10 +1581,10 @@ if (posCartContainer) {
         if (!btn) return;
         const idx = parseInt(btn.dataset.idx);
         const diff = parseInt(btn.dataset.diff);
-        
+
         const item = posCart[idx];
         if (!item) return;
-        
+
         item.quantity += diff;
         if (item.quantity <= 0) {
             posCart.splice(idx, 1);
@@ -1616,25 +1610,25 @@ posClearBtn?.addEventListener('click', () => {
 // Registrar Venta
 posCheckoutBtn?.addEventListener('click', async () => {
     if (posCart.length === 0) return;
-    
+
     const method = posPaymentMethod.value;
     const subtotal = posCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const discount = parseFloat(posDiscountInput?.value) || 0;
     const total = subtotal - discount;
-    
+
     posCheckoutBtn.disabled = true;
     posCheckoutBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin"></i> Registrando...';
     initIcons();
-    
+
     try {
         const orderId = 'POS' + Date.now().toString().slice(-6) + Math.random().toString(36).substring(2, 4).toUpperCase();
-        
+
         // 1. Deduct Stock
         for (const item of posCart) {
-             const productRef = doc(db, 'products', item.id);
-             await updateDoc(productRef, { stock: increment(-item.quantity) });
+            const productRef = doc(db, 'products', item.id);
+            await updateDoc(productRef, { stock: increment(-item.quantity) });
         }
-        
+
         // 2. Create Order
         const orderData = {
             id: orderId,
@@ -1659,22 +1653,22 @@ posCheckoutBtn?.addEventListener('click', async () => {
             stockDeducted: true,
             createdAt: serverTimestamp()
         };
-        
+
         await setDoc(doc(db, 'orders', orderId), orderData);
-        
+
         showToast('Venta registrada exitosamente.');
-        
+
         // Ask to Print
         if (confirm('¿Desea imprimir el recibo (Ticket)?')) {
             printInvoice(orderId);
         }
-        
+
         // Clear
         posCart = [];
         if (posDiscountInput) posDiscountInput.value = '';
         renderPosCart();
-        
-    } catch(err) {
+
+    } catch (err) {
         console.error("Error procesando POS:", err);
         showToast('Error al registrar la venta.');
     } finally {
