@@ -27,6 +27,7 @@ const pathName = window.location.pathname.toLowerCase();
 if (pathName.includes('mujer.html')) currentCategory = 'Mujer';
 else if (pathName.includes('hombre.html')) currentCategory = 'Hombre';
 else if (pathName.includes('ninos.html')) currentCategory = 'Niños';
+else if (pathName.includes('accesorios.html')) currentCategory = 'Accesorios';
 let cartUnsubscribe = null;
 let wishlistUnsubscribe = null;
 let productsUnsubscribe = null;
@@ -1034,12 +1035,13 @@ const setupGlobalButtons = () => {
   // Categorias Grid in index.html linking to pages
   document.querySelectorAll('section.mb-16 div.group').forEach(gridCard => {
     const title = gridCard.querySelector('h4')?.textContent?.trim().toLowerCase();
-    if (!title || (!['mujer', 'hombre', 'niños'].includes(title))) return;
+    if (!title || (!['mujer', 'hombre', 'niños', 'accesorios'].includes(title))) return;
 
     gridCard.addEventListener('click', () => {
       if (title === 'mujer') window.location.href = 'mujer.html';
       if (title === 'hombre') window.location.href = 'hombre.html';
       if (title === 'niños') window.location.href = 'ninos.html';
+      if (title === 'accesorios') window.location.href = 'accesorios.html';
     });
   });
 
@@ -1506,6 +1508,17 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
         }
       }
 
+      // Apply category hero subtitles based on current page
+      const subtitleEl = document.getElementById('category-hero-subtitle');
+      if (subtitleEl) {
+        let subtitleText = '';
+        if (currentCategory === 'Mujer') subtitleText = config.covers.subtitle_mujer;
+        else if (currentCategory === 'Hombre') subtitleText = config.covers.subtitle_hombre;
+        else if (currentCategory === 'Niños') subtitleText = config.covers.subtitle_ninos;
+        else if (currentCategory === 'Accesorios') subtitleText = config.covers.subtitle_accesorios;
+        if (subtitleText) subtitleEl.textContent = subtitleText;
+      }
+
       // Fallback for html pages without matching IDs (if any left)
       document.querySelectorAll('img[alt="Mujer"]:not(#cover-mujer-img)').forEach(img => {
         if (config.covers.mujer) {
@@ -1560,7 +1573,10 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
         const leftCats = config.categories.slice(0, mid);
         const rightCats = config.categories.slice(mid);
 
-        leftNav.innerHTML = leftCats.map(cat => `<a class="nav-link text-zinc-500 hover:text-zinc-800 font-serif tracking-tight text-lg" href="#">${cat}</a>`).join('');
+        leftNav.innerHTML = `
+          <a class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors" href="index.html">Inicio</a>
+          ${leftCats.map(cat => `<a class="nav-link text-zinc-500 hover:text-zinc-800 font-serif tracking-tight text-lg" href="#">${cat}</a>`).join('')}
+        `;
         rightNav.innerHTML = rightCats.map(cat => `<a class="nav-link text-zinc-500 hover:text-zinc-800 font-serif tracking-tight text-lg" href="#">${cat}</a>`).join('');
 
         // Add click listeners to nav links for filtering

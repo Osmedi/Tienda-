@@ -675,37 +675,74 @@
                     <div class="settings-panel settings-panel-banners bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
                         <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="layout-grid" class="w-4 h-4 text-zinc-400"></i> Portadas de Categorías</h3>
                         <p class="text-xs text-zinc-500 mb-4 tracking-wide">Coloca el enlace (URL) de la imagen para cada cuadrícula principal de la tienda.</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <label class="block text-xs font-bold uppercase text-zinc-500">Mujer</label>
+                        <p class="text-xs text-zinc-400 mb-4 italic">Puedes editar la imagen de portada Y el texto que aparece debajo del título en cada página de categoría.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Mujer -->
+                            <div class="space-y-3 p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                                <label class="block text-xs font-bold uppercase text-zinc-600">📷 Mujer</label>
                                 <div class="flex gap-2">
                                     <input type="file" id="cfg-file-mujer" accept="image/*,video/*" class="hidden">
-                                    <button type="button" onclick="document.getElementById('cfg-file-mujer').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
-                                    <input type="url" id="cfg-cover-mujer" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                    <button type="button" onclick="document.getElementById('cfg-file-mujer').click()" class="bg-white border p-2 rounded-lg hover:bg-zinc-100 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-mujer" placeholder="URL de imagen de portada" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
+                                <div id="cfg-preview-container-mujer" class="hidden relative h-16 w-16 rounded-lg overflow-hidden border border-zinc-200 shadow-sm">
+                                    <div id="cfg-preview-mujer" class="w-full h-full"></div>
+                                    <button type="button" id="remove-cfg-mujer" class="absolute top-0 right-0 bg-black/60 text-white p-1 rounded-bl-lg"><i data-lucide="x" class="w-2 h-2"></i></button>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-zinc-400 mb-1">Texto del Hero</label>
+                                    <input type="text" id="cfg-subtitle-mujer" placeholder="Ej: Elegancia y distinción en cada detalle" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
                                 </div>
                             </div>
-                            <div class="space-y-2">
-                                <label class="block text-xs font-bold uppercase text-zinc-500">Hombre</label>
+                            <!-- Hombre -->
+                            <div class="space-y-3 p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                                <label class="block text-xs font-bold uppercase text-zinc-600">📷 Hombre</label>
                                 <div class="flex gap-2">
                                     <input type="file" id="cfg-file-hombre" accept="image/*,video/*" class="hidden">
-                                    <button type="button" onclick="document.getElementById('cfg-file-hombre').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
-                                    <input type="url" id="cfg-cover-hombre" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                    <button type="button" onclick="document.getElementById('cfg-file-hombre').click()" class="bg-white border p-2 rounded-lg hover:bg-zinc-100 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-hombre" placeholder="URL de imagen de portada" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
+                                <div id="cfg-preview-container-hombre" class="hidden relative h-16 w-16 rounded-lg overflow-hidden border border-zinc-200 shadow-sm">
+                                    <div id="cfg-preview-hombre" class="w-full h-full"></div>
+                                    <button type="button" id="remove-cfg-hombre" class="absolute top-0 right-0 bg-black/60 text-white p-1 rounded-bl-lg"><i data-lucide="x" class="w-2 h-2"></i></button>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-zinc-400 mb-1">Texto del Hero</label>
+                                    <input type="text" id="cfg-subtitle-hombre" placeholder="Ej: Fuerza y presencia en cada prenda" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
                                 </div>
                             </div>
-                            <div class="space-y-2">
-                                <label class="block text-xs font-bold uppercase text-zinc-500">Niños</label>
+                            <!-- Niños -->
+                            <div class="space-y-3 p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                                <label class="block text-xs font-bold uppercase text-zinc-600">📷 Niños</label>
                                 <div class="flex gap-2">
                                     <input type="file" id="cfg-file-ninos" accept="image/*,video/*" class="hidden">
-                                    <button type="button" onclick="document.getElementById('cfg-file-ninos').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
-                                    <input type="url" id="cfg-cover-ninos" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                    <button type="button" onclick="document.getElementById('cfg-file-ninos').click()" class="bg-white border p-2 rounded-lg hover:bg-zinc-100 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-ninos" placeholder="URL de imagen de portada" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
+                                <div id="cfg-preview-container-ninos" class="hidden relative h-16 w-16 rounded-lg overflow-hidden border border-zinc-200 shadow-sm">
+                                    <div id="cfg-preview-ninos" class="w-full h-full"></div>
+                                    <button type="button" id="remove-cfg-ninos" class="absolute top-0 right-0 bg-black/60 text-white p-1 rounded-bl-lg"><i data-lucide="x" class="w-2 h-2"></i></button>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-zinc-400 mb-1">Texto del Hero</label>
+                                    <input type="text" id="cfg-subtitle-ninos" placeholder="Ej: Aventura y comodidad para los más pequeños" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
                                 </div>
                             </div>
-                            <div class="space-y-2">
-                                <label class="block text-xs font-bold uppercase text-zinc-500">Accesorios</label>
+                            <!-- Accesorios -->
+                            <div class="space-y-3 p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                                <label class="block text-xs font-bold uppercase text-zinc-600">📷 Accesorios</label>
                                 <div class="flex gap-2">
                                     <input type="file" id="cfg-file-accesorios" accept="image/*,video/*" class="hidden">
-                                    <button type="button" onclick="document.getElementById('cfg-file-accesorios').click()" class="bg-zinc-100 p-2 rounded-lg hover:bg-zinc-200 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
-                                    <input type="url" id="cfg-cover-accesorios" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                    <button type="button" onclick="document.getElementById('cfg-file-accesorios').click()" class="bg-white border p-2 rounded-lg hover:bg-zinc-100 transition-colors"><i data-lucide="upload" class="w-4 h-4 text-zinc-600"></i></button>
+                                    <input type="url" id="cfg-cover-accesorios" placeholder="URL de imagen de portada" class="flex-1 px-3 py-2 border rounded-lg focus:border-black outline-none text-[10px]">
+                                </div>
+                                <div id="cfg-preview-container-accesorios" class="hidden relative h-16 w-16 rounded-lg overflow-hidden border border-zinc-200 shadow-sm">
+                                    <div id="cfg-preview-accesorios" class="w-full h-full"></div>
+                                    <button type="button" id="remove-cfg-accesorios" class="absolute top-0 right-0 bg-black/60 text-white p-1 rounded-bl-lg"><i data-lucide="x" class="w-2 h-2"></i></button>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-zinc-400 mb-1">Texto del Hero</label>
+                                    <input type="text" id="cfg-subtitle-accesorios" placeholder="Ej: Complementa tu estilo con piezas únicas" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
                                 </div>
                             </div>
                         </div>

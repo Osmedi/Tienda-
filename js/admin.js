@@ -104,7 +104,10 @@ const setupFilePreview = (fileInputId, containerId, previewBoxId, urlInputId) =>
                 const urlInput = document.getElementById(urlInputId);
 
                 if (container) container.classList.remove('hidden');
-                if (urlInput) urlInput.placeholder = "Archivo seleccionado para subir";
+                if (urlInput) {
+                    urlInput.value = '';
+                    urlInput.placeholder = "Archivo seleccionado para subir";
+                }
 
                 if (box) {
                     if (file.type.startsWith('video/')) {
@@ -125,10 +128,10 @@ setupFilePreview('ap-image-file-2', 'ap-preview-container-2', 'ap-preview-2', 'a
 setupFilePreview('ap-image-file-3', 'ap-preview-container-3', 'ap-preview-3', 'ap-image-3');
 
 setupFilePreview('cfg-hero-file', 'cfg-hero-preview-container', 'cfg-hero-preview-box', 'cfg-hero-image');
-setupFilePreview('cfg-file-mujer', null, null, 'cfg-cover-mujer');
-setupFilePreview('cfg-file-hombre', null, null, 'cfg-cover-hombre');
-setupFilePreview('cfg-file-ninos', null, null, 'cfg-cover-ninos');
-setupFilePreview('cfg-file-accesorios', null, null, 'cfg-cover-accesorios');
+setupFilePreview('cfg-file-mujer', 'cfg-preview-container-mujer', 'cfg-preview-mujer', 'cfg-cover-mujer');
+setupFilePreview('cfg-file-hombre', 'cfg-preview-container-hombre', 'cfg-preview-hombre', 'cfg-cover-hombre');
+setupFilePreview('cfg-file-ninos', 'cfg-preview-container-ninos', 'cfg-preview-ninos', 'cfg-cover-ninos');
+setupFilePreview('cfg-file-accesorios', 'cfg-preview-container-accesorios', 'cfg-preview-accesorios', 'cfg-cover-accesorios');
 
 const removePreview = (idx) => {
     const input = document.getElementById(`ap-image-file-${idx}`);
@@ -147,8 +150,27 @@ document.getElementById('remove-cfg-hero')?.addEventListener('click', () => {
     if (input) input.value = '';
     document.getElementById('cfg-hero-preview-container')?.classList.add('hidden');
     const urlInput = document.getElementById('cfg-hero-image');
-    if (urlInput) urlInput.placeholder = "O pega el link aquí...";
+    if (urlInput) {
+        urlInput.value = '';
+        urlInput.placeholder = "O pega el link aquí...";
+    }
 });
+
+const removeConfigPreview = (key) => {
+    const input = document.getElementById(`cfg-file-${key}`);
+    if (input) input.value = '';
+    document.getElementById(`cfg-preview-container-${key}`)?.classList.add('hidden');
+    const urlInput = document.getElementById(`cfg-cover-${key}`);
+    if (urlInput) {
+        urlInput.value = '';
+        urlInput.placeholder = "URL de imagen";
+    }
+};
+
+document.getElementById('remove-cfg-mujer')?.addEventListener('click', () => removeConfigPreview('mujer'));
+document.getElementById('remove-cfg-hombre')?.addEventListener('click', () => removeConfigPreview('hombre'));
+document.getElementById('remove-cfg-ninos')?.addEventListener('click', () => removeConfigPreview('ninos'));
+document.getElementById('remove-cfg-accesorios')?.addEventListener('click', () => removeConfigPreview('accesorios'));
 
 // Auth Elements
 const loginOverlay = document.getElementById('admin-login-overlay');
@@ -362,10 +384,21 @@ const loadDashboardData = () => {
             updateInput('cfg-shipping-threshold', data.shippingFreeThreshold || '0.00');
 
             if (data.covers) {
-                updateInput('cfg-cover-mujer', data.covers.mujer);
-                updateInput('cfg-cover-hombre', data.covers.hombre);
-                updateInput('cfg-cover-ninos', data.covers.ninos);
-                updateInput('cfg-cover-accesorios', data.covers.accesorios);
+                const coverKeys = ['mujer', 'hombre', 'ninos', 'accesorios'];
+                coverKeys.forEach(key => {
+                    const url = data.covers[key];
+                    updateInput(`cfg-cover-${key}`, url);
+                    updateInput(`cfg-subtitle-${key}`, data.covers[`subtitle_${key}`]);
+                    
+                    const container = document.getElementById(`cfg-preview-container-${key}`);
+                    const box = document.getElementById(`cfg-preview-${key}`);
+                    if (container && box && url) {
+                        container.classList.remove('hidden');
+                        box.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
+                    } else if (container) {
+                        container.classList.add('hidden');
+                    }
+                });
             }
         }
     }, (err) => console.error("Settings snapshot error:", err));
@@ -1180,7 +1213,11 @@ document.getElementById('save-settings-btn').addEventListener('click', async () 
         mujer: document.getElementById('cfg-cover-mujer').value,
         hombre: document.getElementById('cfg-cover-hombre').value,
         ninos: document.getElementById('cfg-cover-ninos').value,
-        accesorios: document.getElementById('cfg-cover-accesorios').value
+        accesorios: document.getElementById('cfg-cover-accesorios').value,
+        subtitle_mujer: document.getElementById('cfg-subtitle-mujer').value,
+        subtitle_hombre: document.getElementById('cfg-subtitle-hombre').value,
+        subtitle_ninos: document.getElementById('cfg-subtitle-ninos').value,
+        subtitle_accesorios: document.getElementById('cfg-subtitle-accesorios').value
     };
 
     try {

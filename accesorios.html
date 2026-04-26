@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accesorios | StyleHN</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="./css/styles.css" />
+  <script>
+    (function() {
+      try {
+        const cached = localStorage.getItem('stylehn_settings');
+        if (cached) {
+          const config = JSON.parse(cached);
+          if (config.primaryColor) {
+            document.documentElement.style.setProperty('--primary-color', config.primaryColor);
+            const style = document.createElement('style');
+            style.id = 'early-branding-style';
+            style.innerHTML = `
+              :root { --primary-color: ${config.primaryColor} !important; }
+              .bg-\\[\\#ba0036\\] { background-color: ${config.primaryColor} !important; }
+              .text-\\[\\#ba0036\\] { color: ${config.primaryColor} !important; }
+              .border-\\[\\#ba0036\\] { border-color: ${config.primaryColor} !important; }
+              .primary-gradient { background: ${config.primaryColor} !important; }
+            `;
+            document.head.appendChild(style);
+          }
+          const applyBranding = () => {
+            const removeSkeleton = (el) => {
+              if (!el) return;
+              el.classList.remove('skeleton', 'w-32', 'h-4', 'w-3/4', 'h-16', 'rounded');
+            };
+            if (config.storeName) {
+              document.title = config.storeName + " | Accesorios";
+              const logoEls = document.querySelectorAll('#navbar-logo, #footer-logo');
+              logoEls.forEach(el => el.textContent = config.storeName);
+            }
+            if (config.covers) {
+              const mappings = {
+                'cover-accesorios-img': config.covers.accesorios
+              };
+              for (const [id, url] of Object.entries(mappings)) {
+                const img = document.getElementById(id);
+                if (img && url) {
+                  img.src = url;
+                  img.classList.remove('skeleton');
+                }
+              }
+            }
+          };
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applyBranding);
+          } else {
+            applyBranding();
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>
+</head>
+
+<body class="bg-[#f9f9f9] text-[#1a1c1c] font-sans selection:bg-[#ffdada] selection:text-[#40000d]">
+  <!-- Top Navigation Bar -->
+  <header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
+    <div class="flex justify-between items-center h-16 px-6 max-w-screen-2xl mx-auto">
+      <div class="flex items-center gap-4">
+        <button id="search-btn"
+          class="hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform cursor-pointer">
+          <i data-lucide="search" class="w-5 h-5 text-zinc-900"></i>
+        </button>
+        <nav id="navbar-categories-left" class="hidden md:flex gap-6 items-center">
+          <a href="index.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Inicio</a>
+          <a href="mujer.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Mujer</a>
+          <a href="hombre.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Hombre</a>
+        </nav>
+      </div>
+      <h1 id="navbar-logo" class="text-2xl font-bold font-serif text-zinc-900 absolute left-1/2 -translate-x-1/2 cursor-pointer"
+        onclick="window.location.href='index.html'">StyleHN</h1>
+      <div class="flex items-center gap-4">
+        <button id="admin-btn"
+          class="hidden text-zinc-500 hover:text-[#ba0036] transition-colors cursor-pointer flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-200">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span class="text-xs font-bold uppercase tracking-tighter">Admin</span>
+        </button>
+        <nav id="navbar-categories-right" class="hidden md:flex gap-6 items-center mr-4">
+          <a href="ninos.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Niños</a>
+          <a href="accesorios.html" class="text-xs uppercase tracking-widest font-bold text-zinc-900 transition-colors">Accesorios</a>
+        </nav>
+        <button id="auth-btn" class="hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform cursor-pointer">
+          <i data-lucide="user" class="w-5 h-5 text-zinc-900"></i>
+        </button>
+        <button id="wishlist-btn" class="relative hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform cursor-pointer">
+          <i data-lucide="heart" class="w-5 h-5 text-zinc-900"></i>
+          <span id="wishlist-count" class="hidden absolute -top-1 -right-1 bg-[#ba0036] text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold">0</span>
+        </button>
+        <button id="cart-btn" class="relative hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform cursor-pointer">
+          <i data-lucide="shopping-bag" class="w-5 h-5 text-zinc-900"></i>
+          <span id="cart-count" class="absolute -top-1 -right-1 bg-[#ba0036] text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Cart Sidebar -->
+  <div id="cart-sidebar" class="fixed inset-0 z-[100] hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="cart-overlay"></div>
+    <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
+      <div class="p-6 border-b border-zinc-100 flex justify-between items-center">
+        <h3 class="text-2xl font-serif italic">Tu Carrito</h3>
+        <button id="close-cart" class="p-2 hover:bg-zinc-100 rounded-full transition-colors cursor-pointer">
+          <i data-lucide="x" class="w-6 h-6 text-zinc-500"></i>
+        </button>
+      </div>
+      <div id="cart-items" class="flex-1 overflow-y-auto p-6 flex flex-col gap-6"></div>
+      <div class="p-6 border-t border-zinc-100 bg-zinc-50">
+        <div class="flex justify-between items-center mb-6">
+          <span class="text-zinc-500 font-medium">Subtotal</span>
+          <span id="cart-total" class="text-2xl font-bold font-serif">$0.00</span>
+        </div>
+        <button id="trigger-checkout-btn" class="primary-gradient text-white w-full py-4 rounded-full font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer">
+          Proceder al Pago
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="product-details-modal" class="fixed inset-0 z-[120] hidden flex items-end md:items-center justify-center">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" id="product-details-overlay"></div>
+    <div class="relative w-full max-w-4xl bg-white rounded-t-3xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[95vh] md:max-h-[85vh]">
+      <button id="close-product-details" class="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-md hover:bg-white rounded-full transition-colors z-20 cursor-pointer shadow-sm">
+        <i data-lucide="x" class="w-5 h-5 text-zinc-900"></i>
+      </button>
+      <div class="w-full md:w-1/2 bg-zinc-100 flex-shrink-0 relative overflow-hidden h-72 md:h-auto flex flex-col">
+        <div class="flex-1 relative overflow-hidden">
+          <img id="pd-image" class="w-full h-full object-cover" src="" alt="">
+        </div>
+        <div id="pd-gallery" class="flex gap-2 p-4 bg-white/50 backdrop-blur-sm overflow-x-auto hide-scrollbar border-t border-zinc-100 hidden"></div>
+      </div>
+      <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col overflow-y-auto">
+        <span id="pd-category" class="text-[10px] font-black uppercase tracking-[0.2em] text-[#ba0036] mb-3">Accesorios</span>
+        <h2 id="pd-name" class="text-3xl font-serif italic mb-2"></h2>
+        <p id="pd-price" class="text-2xl font-bold text-zinc-900 mb-6"></p>
+        <p id="pd-desc" class="text-zinc-500 text-sm mb-8 flex-1"></p>
+        <div id="pd-sizes-container" class="mb-8 hidden">
+          <h4 class="font-bold text-xs uppercase tracking-widest text-zinc-900 mb-3">Tallas</h4>
+          <div id="pd-sizes" class="flex flex-wrap gap-2"></div>
+        </div>
+        <button id="pd-submit-cart" class="primary-gradient text-white w-full py-4 rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2 cursor-pointer">
+          <i data-lucide="shopping-bag" class="w-5 h-5"></i> Añadir al Carrito
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="search-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex items-start justify-center pt-24 px-6">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+      <div class="flex items-center p-4 border-b border-zinc-100">
+        <i data-lucide="search" class="w-5 h-5 text-zinc-400 mr-3"></i>
+        <input type="text" id="search-input" placeholder="Buscar en accesorios..." class="flex-1 bg-transparent border-none outline-none text-lg font-serif" />
+        <button id="close-search" class="p-2 hover:bg-zinc-100 rounded-full transition-colors cursor-pointer"><i data-lucide="x" class="w-5 h-5 text-zinc-500"></i></button>
+      </div>
+      <div id="search-suggestions-container" class="hidden flex flex-col max-h-[60vh] overflow-y-auto px-2 pb-4"></div>
+    </div>
+  </div>
+
+  <div id="checkout-sidebar" class="fixed inset-0 z-[110] hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="checkout-overlay"></div>
+    <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
+      <div class="p-6 border-b border-zinc-100 flex justify-between items-center"><h3 class="text-2xl font-serif italic text-zinc-900">Finalizar Pedido</h3><button id="close-checkout" class="p-2 hover:bg-zinc-100 rounded-full transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button></div>
+      <div class="flex-1 overflow-y-auto"><form id="checkout-form" class="p-6 flex flex-col gap-6"><div class="space-y-3"><h4 class="font-bold text-xs uppercase tracking-widest text-[#ba0036]">1. Tipo de Entrega</h4><select id="co-delivery-type" required class="w-full px-4 py-3 bg-zinc-50 rounded-lg border focus:border-[#ba0036] outline-none"><option value="Envio">Envío a domicilio</option><option value="Recoger">Recoger en sucursal</option></select></div><div id="co-shipping-fields" class="space-y-3"><h4 class="font-bold text-xs uppercase tracking-widest text-[#ba0036]">2. Dirección</h4><textarea id="co-address" rows="3" class="w-full px-4 py-3 bg-zinc-50 rounded-lg border focus:border-[#ba0036] outline-none resize-none"></textarea></div><div class="space-y-3"><h4 class="font-bold text-xs uppercase tracking-widest text-[#ba0036]">3. Pago</h4><select id="co-payment" required class="w-full px-4 py-3 bg-zinc-50 rounded-lg border focus:border-[#ba0036] outline-none"><option value="Transferencia">Transferencia</option><option value="Efectivo Contra Entrega">Efectivo contra entrega</option></select></div><div class="border-t pt-6"><div class="flex justify-between mb-2"><span>Subtotal</span><span id="co-subtotal">$0.00</span></div><div class="flex justify-between font-bold text-zinc-900 text-xl"><span>Total Final</span><span id="co-final-total">$0.00</span></div></div><button type="submit" class="primary-gradient text-white w-full py-4 rounded-xl font-bold mt-4">Confirmar Orden</button></form></div>
+    </div>
+  </div>
+
+  <div id="wishlist-sidebar" class="fixed inset-0 z-[100] hidden"><div class="absolute inset-0 bg-black/40" id="wishlist-overlay"></div><div class="absolute right-0 h-full w-full max-w-md bg-white flex flex-col"><div class="p-6 border-b flex justify-between"><h3>Favoritos</h3><button id="close-wishlist"><i data-lucide="x"></i></button></div><div id="wishlist-items" class="flex-1 overflow-y-auto p-6"></div></div></div>
+  <div id="orders-sidebar" class="fixed inset-0 z-[100] hidden"><div class="absolute inset-0 bg-black/40" id="orders-overlay"></div><div class="absolute right-0 h-full w-full max-w-md bg-white flex flex-col"><div class="p-6 border-b flex justify-between"><h3>Mis Pedidos</h3><button id="close-orders"><i data-lucide="x"></i></button></div><div id="orders-items" class="flex-1 overflow-y-auto p-6 bg-zinc-50"></div></div></div>
+  <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+  <main class="pt-16 pb-24">
+    <!-- Category Hero Header -->
+    <section class="px-6 mb-12">
+      <div class="relative w-full aspect-[21/9] rounded-xl overflow-hidden group">
+        <img id="cover-accesorios-img" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 skeleton animate-zoom-reveal" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Accesorios">
+        <div class="absolute inset-0 bg-black/40 flex flex-col justify-center items-center text-center p-6">
+          <h2 class="text-white text-5xl md:text-7xl font-serif italic mb-2 animate-title-reveal delay-200">Accesorios</h2>
+          <p id="category-hero-subtitle" class="text-white/80 uppercase tracking-[0.3em] text-xs mb-8 animate-fade-up delay-400">Complementa tu estilo con piezas únicas</p>
+          <a href="index.html" class="bg-white/10 backdrop-blur-md text-white border border-white/30 px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all flex items-center gap-2 animate-fade-up delay-600">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Regresar al Inicio
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Category Filter Bar (Fixed) -->
+    <section id="category-scroll-bar" class="hidden">
+        <button>Accesorios</button>
+    </section>
+
+    <section class="px-6 mb-16 max-w-screen-2xl mx-auto reveal">
+      <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="col-span-full py-20 flex justify-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ba0036]"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-[#1A1A2E] text-white py-16 px-8 border-t border-zinc-800">
+    <div class="max-w-screen-2xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12 mb-16">
+      <div>
+        <h5 id="footer-logo" class="text-2xl font-serif font-bold mb-6 tracking-tighter text-white">StyleHN</h5>
+        <p class="text-zinc-500 text-[10px] uppercase tracking-widest leading-relaxed">Editorial E-Commerce. Alta calidad en cada pieza.</p>
+      </div>
+      <div id="footer-sections-container" class="contents"></div>
+    </div>
+    <div class="max-w-screen-2xl mx-auto pt-8 border-t border-zinc-800 flex justify-between items-center">
+      <p id="footer-copyright" class="text-zinc-500 text-[10px] uppercase tracking-widest">© 2024 StyleHN Accesorios.</p>
+      <div class="flex gap-4 opacity-30 text-white"><i data-lucide="credit-card"></i><i data-lucide="wallet"></i></div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module" src="./js/app.js"></script>
+  <script>
+    const bar = document.createElement('div');
+    bar.className = 'page-progress-bar';
+    document.body.prepend(bar);
+    setTimeout(() => bar.remove(), 900);
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('reveal-visible'); observer.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
