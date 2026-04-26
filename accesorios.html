@@ -70,13 +70,12 @@
           <i data-lucide="search" class="w-5 h-5 text-zinc-900"></i>
         </button>
         <nav id="navbar-categories-left" class="hidden md:flex gap-6 items-center">
-          <a href="index.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Inicio</a>
-          <a href="mujer.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Mujer</a>
-          <a href="hombre.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Hombre</a>
+          <a href="index.html" class="text-xs uppercase tracking-widest font-bold text-zinc-900 transition-colors">Inicio</a>
+          <!-- Dynamic categories -->
         </nav>
       </div>
       <h1 id="navbar-logo" class="text-2xl font-bold font-serif text-zinc-900 absolute left-1/2 -translate-x-1/2 cursor-pointer"
-        onclick="window.location.href='index.html'">StyleHN</h1>
+        onclick="window.location.href='index.html'">...</h1>
       <div class="flex items-center gap-4">
         <button id="admin-btn"
           class="hidden text-zinc-500 hover:text-[#ba0036] transition-colors cursor-pointer flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-200">
@@ -84,8 +83,7 @@
           <span class="text-xs font-bold uppercase tracking-tighter">Admin</span>
         </button>
         <nav id="navbar-categories-right" class="hidden md:flex gap-6 items-center mr-4">
-          <a href="ninos.html" class="text-xs uppercase tracking-widest font-bold text-zinc-400 hover:text-black transition-colors">Niños</a>
-          <a href="accesorios.html" class="text-xs uppercase tracking-widest font-bold text-zinc-900 transition-colors">Accesorios</a>
+          <!-- Dynamic categories -->
         </nav>
         <button id="auth-btn" class="hover:opacity-80 transition-opacity scale-95 active:scale-90 transition-transform cursor-pointer">
           <i data-lucide="user" class="w-5 h-5 text-zinc-900"></i>
@@ -208,8 +206,8 @@
       <div class="relative w-full aspect-[21/9] rounded-xl overflow-hidden group">
         <img id="cover-accesorios-img" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 skeleton animate-zoom-reveal" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Accesorios">
         <div class="absolute inset-0 bg-black/40 flex flex-col justify-center items-center text-center p-6">
-          <h2 class="text-white text-5xl md:text-7xl font-serif italic mb-2 animate-title-reveal delay-200">Accesorios</h2>
-          <p id="category-hero-subtitle" class="text-white/80 uppercase tracking-[0.3em] text-xs mb-8 animate-fade-up delay-400">Complementa tu estilo con piezas únicas</p>
+          <h2 id="category-hero-title" class="text-white text-5xl md:text-7xl font-serif italic mb-2 animate-title-reveal delay-200">...</h2>
+          <p id="category-hero-subtitle" class="text-white/80 uppercase tracking-[0.3em] text-xs mb-8 animate-fade-up delay-400">...</p>
           <a href="index.html" class="bg-white/10 backdrop-blur-md text-white border border-white/30 px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all flex items-center gap-2 animate-fade-up delay-600">
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             Regresar al Inicio
@@ -235,13 +233,13 @@
   <footer class="bg-[#1A1A2E] text-white py-16 px-8 border-t border-zinc-800">
     <div class="max-w-screen-2xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12 mb-16">
       <div>
-        <h5 id="footer-logo" class="text-2xl font-serif font-bold mb-6 tracking-tighter text-white">StyleHN</h5>
-        <p class="text-zinc-500 text-[10px] uppercase tracking-widest leading-relaxed">Editorial E-Commerce. Alta calidad en cada pieza.</p>
+        <h5 id="footer-logo" class="text-2xl font-serif font-bold mb-6 tracking-tighter text-white">...</h5>
+        <p id="footer-description" class="text-zinc-500 text-[10px] uppercase tracking-widest leading-relaxed">...</p>
       </div>
       <div id="footer-sections-container" class="contents"></div>
     </div>
     <div class="max-w-screen-2xl mx-auto pt-8 border-t border-zinc-800 flex justify-between items-center">
-      <p id="footer-copyright" class="text-zinc-500 text-[10px] uppercase tracking-widest">© 2024 StyleHN Accesorios.</p>
+      <p id="footer-copyright" class="text-zinc-500 text-[10px] uppercase tracking-widest">© ...</p>
       <div class="flex gap-4 opacity-30 text-white"><i data-lucide="credit-card"></i><i data-lucide="wallet"></i></div>
     </div>
   </footer>

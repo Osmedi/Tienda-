@@ -233,8 +233,8 @@ const renderTendencias = () => {
     const addBtn = isAgotado ? '' : `<button class="add-to-cart absolute bottom-4 right-4 bg-zinc-900 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all cursor-pointer z-20" data-id="${product.id}"><i data-lucide="plus" class="w-6 h-6"></i></button>`;
 
     return `
-        <div class="flex flex-col gap-4 group text-left relative overflow-hidden">
-          <div class="relative aspect-[3/4] rounded-lg overflow-hidden bg-zinc-100">
+        <div class="flex flex-col gap-4 group text-left relative overflow-hidden ${window.storeConfig?.productCard?.style === 'shadow' ? 'bg-white rounded-xl shadow-lg p-3 border border-zinc-100' : window.storeConfig?.productCard?.style === 'bordered' ? 'border border-zinc-200 rounded-xl p-3' : ''}">
+          <div class="relative ${window.storeConfig?.productCard?.aspectRatio === 'square' ? 'aspect-square' : window.storeConfig?.productCard?.aspectRatio === 'video' ? 'aspect-video' : 'aspect-[3/4]'} ${window.storeConfig?.productCard?.style === 'minimal' ? 'rounded-lg' : 'rounded-md'} overflow-hidden bg-zinc-100">
             ${agotadoOverlay}
             <img class="w-full h-full object-cover transition-transform duration-700 ${!isAgotado ? 'group-hover:scale-110' : ''}" src="${product.image}" alt="${product.name}" referrerpolicy="no-referrer" />
             ${product.isNew ? '<span class="absolute top-4 left-4 bg-white px-3 py-1 text-[10px] font-bold uppercase rounded-full tracking-tighter z-20 shadow-sm text-zinc-900">Nuevo</span>' : ''}
@@ -292,8 +292,8 @@ const renderProducts = () => {
     const addBtn = isAgotado ? '' : `<button class="add-to-cart absolute bottom-4 right-4 bg-zinc-900 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all cursor-pointer z-20" data-id="${product.id}"><i data-lucide="plus" class="w-6 h-6"></i></button>`;
 
     return `
-    <div class="flex flex-col gap-4 group text-left relative overflow-hidden">
-      <div class="relative aspect-[3/4] rounded-lg overflow-hidden bg-zinc-100">
+    <div class="flex flex-col gap-4 group text-left relative overflow-hidden ${window.storeConfig?.productCard?.style === 'shadow' ? 'bg-white rounded-xl shadow-lg p-3 border border-zinc-100' : window.storeConfig?.productCard?.style === 'bordered' ? 'border border-zinc-200 rounded-xl p-3' : ''}">
+      <div class="relative ${window.storeConfig?.productCard?.aspectRatio === 'square' ? 'aspect-square' : window.storeConfig?.productCard?.aspectRatio === 'video' ? 'aspect-video' : 'aspect-[3/4]'} ${window.storeConfig?.productCard?.style === 'minimal' ? 'rounded-lg' : 'rounded-md'} overflow-hidden bg-zinc-100">
         ${agotadoOverlay}
         <img class="w-full h-full object-cover transition-transform duration-700 ${!isAgotado ? 'group-hover:scale-110' : ''}" src="${product.image}" alt="${product.name}" referrerpolicy="no-referrer" />
         ${product.isNew ? '<span class="absolute top-4 left-4 bg-white px-3 py-1 text-[10px] font-bold uppercase rounded-full tracking-tighter z-20 shadow-sm text-zinc-900">Nuevo</span>' : ''}
@@ -1532,21 +1532,59 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
     const config = snapshot.data();
     localStorage.setItem('stylehn_settings', JSON.stringify(config));
 
-    // Update Dynamic CSS Variables (Primary Color)
-    if (config.primaryColor) {
-      document.documentElement.style.setProperty('--primary-color', config.primaryColor);
+    // Save global config for renderers
+    window.storeConfig = config;
+
+    // 1. Update Dynamic CSS Variables (Primary Color & Theme & Font)
+    if (config.primaryColor || config.globalStyle) {
+      const primaryColor = config.primaryColor || '#ba0036';
+      document.documentElement.style.setProperty('--primary-color', primaryColor);
       let styleTag = document.getElementById('dynamic-site-style');
       if (!styleTag) {
         styleTag = document.createElement('style');
         styleTag.id = 'dynamic-site-style';
         document.head.appendChild(styleTag);
       }
+      
+      const theme = config.globalStyle?.theme || 'light';
+      const font = config.globalStyle?.fontFamily || 'serif';
+      
+      let fontImport = '';
+      let fontRule = '';
+      
+      if (font === 'serif') {
+        fontImport = "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');";
+        fontRule = "font-family: 'Playfair Display', serif;";
+      } else if (font === 'sans') {
+        fontImport = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');";
+        fontRule = "font-family: 'Inter', sans-serif;";
+      } else if (font === 'mono') {
+        fontImport = "@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');";
+        fontRule = "font-family: 'Space Mono', monospace;";
+      }
+
+      let themeRules = '';
+      if (theme === 'dark') {
+        themeRules = `
+          body { background-color: #09090b !important; color: #f4f4f5 !important; }
+          .bg-white, .bg-zinc-50 { background-color: #18181b !important; border-color: #27272a !important; color: #f4f4f5 !important; }
+          .text-zinc-900, .text-black { color: #ffffff !important; }
+          .text-zinc-500 { color: #a1a1aa !important; }
+          .bg-zinc-100 { background-color: #27272a !important; }
+          .bg-zinc-900 { background-color: #ffffff !important; color: #000000 !important; }
+          .border-zinc-200 { border-color: #27272a !important; }
+        `;
+      }
+
       styleTag.innerHTML = `
-        :root { --primary-color: ${config.primaryColor} !important; }
-        .bg-\\[\\#ba0036\\] { background-color: ${config.primaryColor} !important; }
-        .text-\\[\\#ba0036\\] { color: ${config.primaryColor} !important; }
-        .border-\\[\\#ba0036\\] { border-color: ${config.primaryColor} !important; }
-        .primary-gradient { background: ${config.primaryColor} !important; }
+        ${fontImport}
+        :root { --primary-color: ${primaryColor} !important; }
+        body, h1, h2, h3, h4, h5, h6, .font-serif, .font-sans { ${fontRule} !important; }
+        .bg-\\[\\#ba0036\\] { background-color: ${primaryColor} !important; }
+        .text-\\[\\#ba0036\\] { color: ${primaryColor} !important; }
+        .border-\\[\\#ba0036\\] { border-color: ${primaryColor} !important; }
+        .primary-gradient { background: ${primaryColor} !important; }
+        ${themeRules}
       `;
     }
 
@@ -1607,8 +1645,12 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
         }
       }
 
-      // Apply category hero subtitles based on current page
+      // Apply category hero titles and subtitles based on current page
+      const titleEl = document.getElementById('category-hero-title');
       const subtitleEl = document.getElementById('category-hero-subtitle');
+      
+      if (titleEl) titleEl.textContent = currentCategory;
+
       if (subtitleEl) {
         let subtitleText = '';
         if (currentCategory === 'Mujer') subtitleText = config.covers.subtitle_mujer;
@@ -1649,7 +1691,35 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
     if (config.storeName) {
       document.title = `${config.storeName} | Boutique Digital`;
       const logoEls = document.querySelectorAll('#navbar-logo, #footer-logo');
-      logoEls.forEach(el => el.textContent = config.storeName);
+      
+      logoEls.forEach(el => {
+        if (config.logoUrl) {
+           el.innerHTML = `<img src="${config.logoUrl}" alt="${config.storeName}" class="h-8 md:h-10 object-contain">`;
+        } else {
+           el.textContent = config.storeName;
+        }
+      });
+    }
+
+    // Update Favicon
+    if (config.faviconUrl) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+      }
+      link.href = config.faviconUrl;
+    }
+
+    // Handle Home Layout visibility (Only on index.html)
+    if (config.homeLayout && (window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/'))) {
+       const heroSect = document.getElementById('hero-section');
+       const brandsSect = document.getElementById('brands-section');
+       const catSect = document.getElementById('categories-section');
+       if (heroSect) heroSect.style.display = config.homeLayout.showHero !== false ? '' : 'none';
+       if (brandsSect) brandsSect.style.display = config.homeLayout.showBrands !== false ? '' : 'none';
+       if (catSect) catSect.style.display = config.homeLayout.showCategories !== false ? '' : 'none';
     }
     if (config.storeDescription) {
       const descEl = document.getElementById('footer-description');
@@ -1729,6 +1799,18 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
           </ul>
         </div>
       `).join('');
+    }
+
+    // Render Social Links
+    if (config.socialLinks) {
+      const socialContainer = document.getElementById('footer-social-container');
+      if (socialContainer) {
+         let html = '';
+         if (config.socialLinks.instagram) html += `<a href="${config.socialLinks.instagram}" target="_blank" class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-white hover:text-black transition-colors"><i data-lucide="instagram" class="w-5 h-5"></i></a>`;
+         if (config.socialLinks.facebook) html += `<a href="${config.socialLinks.facebook}" target="_blank" class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-white hover:text-black transition-colors"><i data-lucide="facebook" class="w-5 h-5"></i></a>`;
+         if (config.socialLinks.tiktok) html += `<a href="${config.socialLinks.tiktok}" target="_blank" class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-white hover:text-black transition-colors"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></a>`;
+         socialContainer.innerHTML = html;
+      }
     }
 
     // Update Brands Ticker

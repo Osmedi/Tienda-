@@ -1294,6 +1294,12 @@ document.getElementById('save-settings-btn').addEventListener('click', async () 
         const payload = {
             storeName,
             storeDescription,
+            logoUrl,
+            faviconUrl,
+            globalStyle,
+            productCard,
+            socialLinks,
+            homeLayout,
             categories,
             footer,
             primaryColor,
