@@ -23,11 +23,21 @@ let currentBrand = null;
 let appliedCoupon = null;
 
 // Default category based on path
+const urlParams = new URLSearchParams(window.location.search);
+const catParam = urlParams.get('cat');
 const pathName = window.location.pathname.toLowerCase();
-if (pathName.includes('mujer.html')) currentCategory = 'Mujer';
-else if (pathName.includes('hombre.html')) currentCategory = 'Hombre';
-else if (pathName.includes('ninos.html')) currentCategory = 'Niños';
-else if (pathName.includes('accesorios.html')) currentCategory = 'Accesorios';
+
+if (catParam) {
+  currentCategory = catParam;
+} else if (pathName.includes('mujer.html')) {
+  currentCategory = 'Mujer';
+} else if (pathName.includes('hombre.html')) {
+  currentCategory = 'Hombre';
+} else if (pathName.includes('ninos.html')) {
+  currentCategory = 'Niños';
+} else if (pathName.includes('accesorios.html')) {
+  currentCategory = 'Accesorios';
+}
 let cartUnsubscribe = null;
 let wishlistUnsubscribe = null;
 let productsUnsubscribe = null;
@@ -843,7 +853,7 @@ const openProductDetails = (id) => {
   const sizesDiv = document.getElementById('pd-sizes');
   const errorEl = document.getElementById('pd-size-error');
 
-  errorEl.classList.add('hidden');
+  errorEl?.classList.add('hidden');
   sizesDiv.innerHTML = '';
 
   if (product.sizes && product.sizes.length > 0) {
@@ -862,7 +872,7 @@ const openProductDetails = (id) => {
         btn.classList.add('bg-zinc-900', 'text-white', 'border-zinc-900');
         btn.classList.remove('border-zinc-200');
         selectedSize = btn.dataset.size;
-        errorEl.classList.add('hidden');
+        errorEl?.classList.add('hidden');
       });
     });
   } else {
@@ -923,7 +933,12 @@ const setupGlobalButtons = () => {
     }
 
     if (currentViewedProduct.sizes && currentViewedProduct.sizes.length > 0 && !selectedSize) {
-      document.getElementById('pd-size-error').classList.remove('hidden');
+      const sizeErr = document.getElementById('pd-size-error');
+      if (sizeErr) {
+        sizeErr.classList.remove('hidden');
+      } else {
+        showToast('¡Por favor selecciona una talla!');
+      }
       return; // need to select size
     }
 
@@ -972,32 +987,41 @@ const setupGlobalButtons = () => {
   document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
       const text = link.textContent.trim().toLowerCase();
-      if (text === 'mujer') { e.preventDefault(); window.location.href = 'mujer.html'; }
-      else if (text === 'hombre') { e.preventDefault(); window.location.href = 'hombre.html'; }
-      else if (text === 'niños') { e.preventDefault(); window.location.href = 'ninos.html'; }
-      else {
-        // Just filter for the others like Accesorios, Ofertas
-        e.preventDefault();
-        currentCategory = text.charAt(0).toUpperCase() + text.slice(1);
-        currentBrand = null;
-        renderProducts();
+      if (text === 'inicio') return;
+      
+      e.preventDefault();
+      
+      if (text === 'mujer') { window.location.href = 'mujer.html'; return; }
+      if (text === 'hombre') { window.location.href = 'hombre.html'; return; }
+      if (text === 'niños' || text === 'ninos') { window.location.href = 'ninos.html'; return; }
+      if (text === 'accesorios') { window.location.href = 'accesorios.html'; return; }
+      
+      const isIndex = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/');
+      if (!isIndex) {
+        window.location.href = `index.html?cat=${encodeURIComponent(link.textContent.trim())}`;
+        return;
+      }
 
-        // ensure we highlight the correct category pill
-        document.querySelectorAll('section.hide-scrollbar button').forEach(b => {
-          if (b.textContent === currentCategory) {
-            b.classList.remove('bg-zinc-200', 'text-zinc-900');
-            b.classList.add('bg-zinc-900', 'text-white');
-          } else {
-            b.classList.remove('bg-zinc-900', 'text-white');
-            b.classList.add('bg-zinc-200', 'text-zinc-900');
-          }
-        });
+      // Just filter for the others like Ofertas
+      currentCategory = link.textContent.trim();
+      currentBrand = null;
+      renderProducts();
 
-        const grid = document.getElementById('products-grid');
-        if (grid) {
-          const y = grid.getBoundingClientRect().top + window.scrollY - 100;
-          window.scrollTo({ top: y, behavior: 'smooth' });
+      // ensure we highlight the correct category pill
+      document.querySelectorAll('section.hide-scrollbar button').forEach(b => {
+        if (b.textContent === currentCategory) {
+          b.classList.remove('bg-zinc-200', 'text-zinc-900');
+          b.classList.add('bg-zinc-900', 'text-white');
+        } else {
+          b.classList.remove('bg-zinc-900', 'text-white');
+          b.classList.add('bg-zinc-200', 'text-zinc-900');
         }
+      });
+
+      const grid = document.getElementById('products-grid');
+      if (grid) {
+        const y = grid.getBoundingClientRect().top + window.scrollY - 100;
+        window.scrollTo({ top: y, behavior: 'smooth' });
       }
     });
   });
@@ -1141,6 +1165,77 @@ const setupGlobalButtons = () => {
     updateCheckoutMath();
   });
 
+  // GPS Location Button
+  document.getElementById('co-get-location')?.addEventListener('click', () => {
+    const btn = document.getElementById('co-get-location');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Obteniendo...';
+    btn.disabled = true;
+    initIcons();
+
+    if (!navigator.geolocation) {
+      showToast('Tu navegador no soporta geolocalización.');
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const mapsLink = `https://maps.google.com/?q=${lat},${lon}`;
+      
+      const addressInput = document.getElementById('co-address');
+      
+      try {
+        // Attempt reverse geocoding with Nominatim (Free, no auth required)
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+        const data = await response.json();
+        
+        let currentText = addressInput.value.trim();
+        let newText = "";
+        
+        if (data && data.display_name) {
+          newText = `${data.display_name}\n\nUbicación GPS: ${mapsLink}`;
+        } else {
+          newText = `Ubicación GPS: ${mapsLink}`;
+        }
+        
+        // Append instead of overwrite if user already typed something
+        if (currentText && !currentText.includes('maps.google.com')) {
+          addressInput.value = `${currentText}\n\n${newText}`;
+        } else {
+          addressInput.value = newText;
+        }
+      } catch (e) {
+        // Fallback if API fails
+        let currentText = addressInput.value.trim();
+        if (currentText && !currentText.includes('maps.google.com')) {
+           addressInput.value = `${currentText}\n\nUbicación GPS: ${mapsLink}`;
+        } else {
+           addressInput.value = `Ubicación GPS: ${mapsLink}`;
+        }
+      }
+      
+      showToast('Ubicación obtenida correctamente.');
+      btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Ubicación Obtenida';
+      initIcons();
+      
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        initIcons();
+      }, 3000);
+      
+    }, (error) => {
+      console.error(error);
+      showToast('Error al obtener la ubicación. Verifica los permisos.');
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      initIcons();
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  });
+
   // Checkout Button
   checkoutForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1191,8 +1286,12 @@ const setupGlobalButtons = () => {
       if (deliveryType === 'Envio') {
         logistics = document.getElementById('co-logistics').value;
         address = document.getElementById('co-address').value;
-        if (globalShippingThreshold === 0 || finalSubtotal < globalShippingThreshold) {
-          shippingCostVal = globalShippingCost;
+        // Mirror the logic in updateCheckoutMath:
+        // Free shipping if threshold > 0 AND finalSubtotal >= threshold
+        if (globalShippingThreshold > 0 && finalSubtotal >= globalShippingThreshold) {
+          shippingCostVal = 0; // Free shipping threshold reached
+        } else {
+          shippingCostVal = globalShippingCost; // Apply base cost
         }
       }
 
@@ -1582,7 +1681,22 @@ onSnapshot(doc(db, 'settings', 'site_config'), (snapshot) => {
         // Add click listeners to nav links for filtering
         [...leftNav.children, ...rightNav.children].forEach(link => {
           link.onclick = (e) => {
+            const text = link.textContent.trim().toLowerCase();
+            if (text === 'inicio') return;
+            
             e.preventDefault();
+            
+            if (text === 'mujer') { window.location.href = 'mujer.html'; return; }
+            if (text === 'hombre') { window.location.href = 'hombre.html'; return; }
+            if (text === 'niños' || text === 'ninos') { window.location.href = 'ninos.html'; return; }
+            if (text === 'accesorios') { window.location.href = 'accesorios.html'; return; }
+
+            const isIndex = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/');
+            if (!isIndex) {
+              window.location.href = `index.html?cat=${encodeURIComponent(link.textContent.trim())}`;
+              return;
+            }
+
             currentCategory = link.textContent;
             currentBrand = null;
             setupCategoryButtons(); // Refresh scroll bar highlight

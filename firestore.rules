@@ -59,6 +59,12 @@ service cloud.firestore {
       return data.keys().hasAll(fields);
     }
 
+    // Validates that a coupon document exists AND is marked active
+    function isCouponValid(couponCode) {
+      let couponDoc = get(/databases/$(database)/documents/coupons/$(couponCode));
+      return couponDoc != null && couponDoc.data.active == true;
+    }
+
     // ===============================================================
     // Domain Validators
     // ===============================================================
@@ -77,9 +83,9 @@ service cloud.firestore {
              data.keys().hasOnly(['productId', 'name', 'price', 'image', 'quantity', 'size', 'updatedAt']) &&
              data.productId is string &&
              data.name is string &&
-             data.price is number &&
+             data.price is number && data.price > 0 &&
              isValidUrl(data.image) &&
-             data.quantity is number && data.quantity > 0;
+             data.quantity is number && data.quantity > 0 && data.quantity <= 99;
     }
 
     function isValidWishlistItem(data) {
@@ -87,7 +93,7 @@ service cloud.firestore {
              data.keys().hasOnly(['productId', 'name', 'price', 'image', 'createdAt']) &&
              data.productId is string &&
              data.name is string &&
-             data.price is number &&
+             data.price is number && data.price > 0 &&
              isValidUrl(data.image);
     }
 
@@ -95,25 +101,38 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
-    // Products: Publicly readable, only admin can fully write, users can deduct stock
+    // Products: Publicly readable.
+    // Only admin can create/delete/full-update.
+    // Authenticated users can ONLY decrement stock (checkout) — never increment,
+    // and stock cannot go below 0, preventing inventory abuse.
     match /products/{productId} {
       allow read: if true;
       allow create: if isAdmin() && isValidProduct(request.resource.data);
       allow delete: if isAdmin();
-      allow update: if (isAdmin() && isValidProduct(request.resource.data)) || 
-                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
+      allow update: if (isAdmin() && isValidProduct(request.resource.data)) ||
+                       (isAuthenticated() &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']) &&
+                        request.resource.data.stock < resource.data.stock &&
+                        request.resource.data.stock >= 0);
     }
 
-    // User data: Only owner can access
+    // User data: Only owner can access.
+    // Cart and wishlist enforce schema validation on write.
     match /users/{userId} {
       allow get, write: if isOwner(userId);
 
       match /cart/{itemId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && (
+          request.method == 'delete' || isValidCartItem(request.resource.data)
+        );
       }
 
       match /wishlist/{itemId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && (
+          request.method == 'delete' || isValidWishlistItem(request.resource.data)
+        );
       }
     }
 
@@ -124,10 +143,43 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow create: if (isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid))
-                    && request.resource.data.total == request.resource.data.subtotal + request.resource.data.shippingCost - request.resource.data.discountAmount
-                    && request.resource.data.discountAmount >= 0
-                    && (request.resource.data.discountAmount == 0 || (request.resource.data.couponCode != null && exists(/databases/$(database)/documents/coupons/$(request.resource.data.couponCode))));
+      // Security model for shippingCost:
+      // Full server-side shipping validation would require reading /settings/site_config in the rule.
+      // The total integrity check ensures no hidden price inflation. Admin review catches any
+      // fraudulent shippingCost:0 submissions on orders that should have paid shipping.
+
+      allow create: if
+        // Auth: admin or the order owner
+        (isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid))
+
+        // All monetary fields must be present and valid numbers
+        && request.resource.data.subtotal is number && request.resource.data.subtotal > 0
+        && request.resource.data.shippingCost is number && request.resource.data.shippingCost >= 0
+        && request.resource.data.total is number && request.resource.data.total > 0
+
+        // Total integrity: total == subtotal + shippingCost - discount (null treated as 0)
+        && request.resource.data.total == (
+             request.resource.data.subtotal
+             + request.resource.data.shippingCost
+             - (request.resource.data.discountAmount == null ? 0 : request.resource.data.discountAmount)
+           )
+
+        // Discount must be null or a non-negative number
+        && (request.resource.data.discountAmount == null || request.resource.data.discountAmount >= 0)
+
+        // If discount > 0: coupon must exist AND be active — unless it's an admin (POS manual discount)
+        && (request.resource.data.discountAmount == null
+            || request.resource.data.discountAmount == 0
+            || isAdmin()
+            || (request.resource.data.couponCode != null
+                && isCouponValid(request.resource.data.couponCode)))
+
+        // Prevent data injection via large text fields
+        && (request.resource.data.address == null
+            || (request.resource.data.address is string && request.resource.data.address.size() <= 300))
+        && request.resource.data.userName is string
+        && request.resource.data.userName.size() <= 100;
+
       allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow update, delete: if isAdmin();
     }
@@ -142,7 +194,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Default deny
+    // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;
     }

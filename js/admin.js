@@ -322,6 +322,33 @@ const loadDashboardData = () => {
 
             updateInput('cfg-store-name', data.storeName);
             updateInput('cfg-store-desc', data.storeDescription);
+            updateInput('cfg-logo-url', data.logoUrl);
+            updateInput('cfg-favicon-url', data.faviconUrl);
+
+            if (data.globalStyle) {
+                updateInput('cfg-font-family', data.globalStyle.fontFamily || 'serif');
+                updateInput('cfg-theme', data.globalStyle.theme || 'light');
+            }
+            if (data.productCard) {
+                updateInput('cfg-card-style', data.productCard.style || 'minimal');
+                updateInput('cfg-card-aspect', data.productCard.aspectRatio || 'square');
+            }
+            if (data.socialLinks) {
+                updateInput('cfg-social-ig', data.socialLinks.instagram || '');
+                updateInput('cfg-social-fb', data.socialLinks.facebook || '');
+                updateInput('cfg-social-tk', data.socialLinks.tiktok || '');
+            }
+            if (data.homeLayout) {
+                const check = (id, val) => { const el = document.getElementById(id); if(el) el.checked = val; };
+                check('cfg-layout-hero', data.homeLayout.showHero !== false);
+                check('cfg-layout-brands', data.homeLayout.showBrands !== false);
+                check('cfg-layout-categories', data.homeLayout.showCategories !== false);
+            } else {
+                ['cfg-layout-hero', 'cfg-layout-brands', 'cfg-layout-categories'].forEach(id => {
+                    const el = document.getElementById(id); if(el) el.checked = true;
+                });
+            }
+
 
             if (data.categories) {
                 const categoriesStr = data.categories.join(', ');
@@ -734,7 +761,7 @@ const renderProductsTable = () => {
    ORDERS
    ========================================= */
 const ordersTbody = document.getElementById('orders-tbody');
-let currentOrderFilter = 'Pendiente';
+let currentOrderFilter = 'Todos';
 
 document.getElementById('order-filters')?.addEventListener('click', (e) => {
     if (e.target.classList.contains('order-filter-btn')) {
@@ -926,6 +953,7 @@ window.viewOrderDetails = (orderId) => {
             <div class="mt-4 pt-4 border-t border-zinc-100 flex flex-col items-end gap-1 text-sm text-zinc-500">
                 <div class="flex justify-between w-full md:w-1/3"><span>Subtotal:</span> <span class="font-bold text-zinc-800">$${(order.subtotal || order.total || 0).toFixed(2)}</span></div>
                 <div class="flex justify-between w-full md:w-1/3"><span>Envío:</span> <span class="font-bold text-zinc-800">${(order.shippingCost === 0 || !order.shippingCost) ? 'Gratis' : '$' + order.shippingCost.toFixed(2)}</span></div>
+                ${order.discountAmount ? `<div class="flex justify-between w-full md:w-1/3 text-rose-600"><span>Descuento aplicado:</span> <span class="font-bold">-$${order.discountAmount.toFixed(2)}</span></div>` : ''}
             </div>
         </div>
 
@@ -1208,6 +1236,31 @@ document.getElementById('save-settings-btn').addEventListener('click', async () 
     const whatsapp = document.getElementById('cfg-whatsapp').value.replace(/\D/g, '');
     const shippingCost = parseFloat(document.getElementById('cfg-shipping-cost').value) || 0;
     const shippingFreeThreshold = parseFloat(document.getElementById('cfg-shipping-threshold').value) || 0;
+
+    const logoUrl = document.getElementById('cfg-logo-url').value;
+    const faviconUrl = document.getElementById('cfg-favicon-url').value;
+
+    const globalStyle = {
+        fontFamily: document.getElementById('cfg-font-family').value,
+        theme: document.getElementById('cfg-theme').value
+    };
+
+    const productCard = {
+        style: document.getElementById('cfg-card-style').value,
+        aspectRatio: document.getElementById('cfg-card-aspect').value
+    };
+
+    const socialLinks = {
+        instagram: document.getElementById('cfg-social-ig').value,
+        facebook: document.getElementById('cfg-social-fb').value,
+        tiktok: document.getElementById('cfg-social-tk').value
+    };
+
+    const homeLayout = {
+        showHero: document.getElementById('cfg-layout-hero').checked,
+        showBrands: document.getElementById('cfg-layout-brands').checked,
+        showCategories: document.getElementById('cfg-layout-categories').checked
+    };
 
     const covers = {
         mujer: document.getElementById('cfg-cover-mujer').value,
@@ -1655,8 +1708,11 @@ posCheckoutBtn?.addEventListener('click', async () => {
 
     const method = posPaymentMethod.value;
     const subtotal = posCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discount = parseFloat(posDiscountInput?.value) || 0;
-    const total = subtotal - discount;
+    // Validate discount: must be >= 0 and cannot exceed subtotal
+    let discount = parseFloat(posDiscountInput?.value) || 0;
+    if (discount < 0) discount = 0;
+    if (discount > subtotal) discount = subtotal;
+    const total = Math.max(0, subtotal - discount);
 
     posCheckoutBtn.disabled = true;
     posCheckoutBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin"></i> Registrando...';
@@ -1671,7 +1727,7 @@ posCheckoutBtn?.addEventListener('click', async () => {
             await updateDoc(productRef, { stock: increment(-item.quantity) });
         }
 
-        // 2. Create Order
+        // 2. Build order data object (reused for both Firestore and printInvoice)
         const orderData = {
             id: orderId,
             userId: 'store-pos',
@@ -1688,7 +1744,7 @@ posCheckoutBtn?.addEventListener('click', async () => {
             })),
             subtotal,
             shippingCost: 0,
-            discountAmount: discount,
+            discountAmount: discount > 0 ? discount : null,
             total,
             status: 'Entregado',
             deliveryType: 'Física / Local',
@@ -1696,16 +1752,18 @@ posCheckoutBtn?.addEventListener('click', async () => {
             createdAt: serverTimestamp()
         };
 
+        // 3. Save to Firestore
         await setDoc(doc(db, 'orders', orderId), orderData);
 
         showToast('Venta registrada exitosamente.');
 
-        // Ask to Print
+        // 4. Print immediately using the in-memory object (no need to wait for snapshot)
         if (confirm('¿Desea imprimir el recibo (Ticket)?')) {
-            printInvoice(orderId);
+            // Pass a mock object with createdAt as a plain Date so printInvoice works
+            printInvoice({ ...orderData, createdAt: { toDate: () => new Date() } });
         }
 
-        // Clear
+        // 5. Clear cart
         posCart = [];
         if (posDiscountInput) posDiscountInput.value = '';
         renderPosCart();

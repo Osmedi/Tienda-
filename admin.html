@@ -14,14 +14,30 @@
         .sidebar-link.active { background-color: #f4f4f5; color: #18181b; font-weight: bold; border-right: 3px solid #ba0036; }
     </style>
 </head>
-<body class="bg-zinc-50 text-zinc-900 font-sans flex h-screen overflow-hidden">
+<body class="bg-zinc-50 text-zinc-900 font-sans flex flex-col md:flex-row h-screen overflow-hidden relative">
+    <!-- Mobile Header -->
+    <header class="md:hidden bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-40 relative shrink-0 shadow-sm">
+        <h1 class="text-xl font-serif italic font-bold">Admin HN</h1>
+        <button id="mobile-menu-btn" class="p-2 text-zinc-500 hover:text-zinc-900 rounded-lg hover:bg-zinc-100 transition-colors cursor-pointer">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+    </header>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden transition-opacity"></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-zinc-200 flex flex-col h-full flex-shrink-0">
+    <aside id="admin-sidebar" class="fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 w-64 bg-white border-r border-zinc-200 flex flex-col h-full flex-shrink-0 z-50 transition-transform duration-300 ease-in-out">
         <div class="p-6 border-b border-zinc-200 flex justify-between items-center">
             <h1 class="text-2xl font-serif italic font-bold">Admin HN</h1>
-            <a href="index.html" class="text-zinc-400 hover:text-zinc-900" title="Volver a la tienda">
-                <i data-lucide="external-link" class="w-5 h-5"></i>
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="index.html" class="text-zinc-400 hover:text-zinc-900" title="Volver a la tienda">
+                    <i data-lucide="external-link" class="w-5 h-5"></i>
+                </a>
+                <button id="close-sidebar-btn" class="md:hidden text-zinc-400 hover:text-zinc-900 p-1 cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
         </div>
         <nav class="flex-1 py-4 flex flex-col gap-1 overflow-y-auto">
             <button class="sidebar-link active flex items-center gap-3 px-6 py-3 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-colors text-left" data-target="tab-dashboard">
@@ -71,7 +87,7 @@
             <p class="text-zinc-500 animate-pulse">Verificando credenciales...</p>
         </div>
 
-        <div class="p-8 max-w-6xl w-full mx-auto">
+        <div class="p-4 md:p-8 max-w-6xl w-full mx-auto pb-24 md:pb-8">
             
             <!-- Dashboard Tab -->
             <section id="tab-dashboard" class="tab-content active">
@@ -181,8 +197,8 @@
                     <button class="product-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Destacados">Destacados</button>
                 </div>
                 
-                <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
-                    <table class="w-full text-left border-collapse">
+                <div class="bg-white border border-zinc-200 rounded-2xl overflow-x-auto shadow-sm">
+                    <table class="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                             <tr class="bg-zinc-50 border-b border-zinc-200">
                                 <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Producto</th>
@@ -382,8 +398,8 @@
                     <button class="order-filter-btn px-4 py-2 rounded-lg text-sm font-bold transition-colors bg-white text-zinc-600 border border-zinc-200 hover:border-zinc-400 shadow-sm" data-filter="Cancelado">Cancelados</button>
                 </div>
 
-                <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
-                    <table class="w-full text-left border-collapse">
+                <div class="bg-white border border-zinc-200 rounded-2xl overflow-x-auto shadow-sm">
+                    <table class="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                             <tr class="bg-zinc-50 border-b border-zinc-200">
                                 <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">ID Pedido / Fecha</th>
@@ -422,21 +438,21 @@
             </div>
 
             <!-- POS / Venta Física Tab -->
-            <section id="tab-pos" class="tab-content relative h-[calc(100vh-160px)] flex flex-col">
+            <section id="tab-pos" class="tab-content relative h-[calc(100vh-120px)] md:h-[calc(100vh-160px)] flex flex-col">
                 <div class="flex justify-between items-end mb-4 shrink-0">
-                    <h2 class="text-3xl font-serif">Punto de Venta</h2>
+                    <h2 class="text-2xl md:text-3xl font-serif">Punto de Venta</h2>
                 </div>
                 
-                <div class="flex-1 flex gap-6 overflow-hidden">
+                <div class="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 overflow-hidden pb-4 md:pb-0">
                     <!-- Left: Product Browser -->
-                    <div class="flex-1 bg-white border border-zinc-200 rounded-2xl flex flex-col overflow-hidden shadow-sm">
-                        <div class="p-4 border-b border-zinc-100 flex gap-2 bg-zinc-50">
+                    <div class="flex-1 bg-white border border-zinc-200 rounded-2xl flex flex-col overflow-hidden shadow-sm h-1/2 md:h-auto">
+                        <div class="p-4 border-b border-zinc-100 flex gap-2 bg-zinc-50 shrink-0">
                             <div class="relative flex-1">
                                 <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400"></i>
-                                <input type="text" id="pos-search" placeholder="Buscar por nombre o ID..." class="w-full pl-9 pr-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
+                                <input type="text" id="pos-search" placeholder="Buscar..." class="w-full pl-9 pr-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
                             </div>
-                            <select id="pos-category-filter" class="px-3 py-2 border rounded-lg focus:border-black outline-none text-sm bg-white cursor-pointer">
-                                <option value="Todos">Todas las Cat.</option>
+                            <select id="pos-category-filter" class="px-3 py-2 border rounded-lg focus:border-black outline-none text-sm bg-white cursor-pointer w-24 md:w-auto">
+                                <option value="Todos">Todas</option>
                             </select>
                         </div>
                         <div class="flex-1 overflow-y-auto p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="pos-product-grid">
@@ -446,8 +462,8 @@
                     </div>
                     
                     <!-- Right: Cart & Checkout -->
-                    <div class="w-80 lg:w-96 bg-white border border-zinc-200 rounded-2xl flex flex-col overflow-hidden shadow-sm shrink-0">
-                        <div class="p-4 bg-zinc-900 border-b border-zinc-800 text-white flex justify-between items-center">
+                    <div class="w-full md:w-80 lg:w-96 bg-white border border-zinc-200 rounded-2xl flex flex-col overflow-hidden shadow-sm shrink-0 h-1/2 md:h-auto">
+                        <div class="p-4 bg-zinc-900 border-b border-zinc-800 text-white flex justify-between items-center shrink-0">
                             <h3 class="font-bold flex items-center gap-2"><i data-lucide="shopping-cart" class="w-4 h-4"></i> Caja Activa</h3>
                             <button id="pos-clear-cart" class="text-zinc-400 hover:text-white text-[10px] font-bold uppercase tracking-wider">Vaciar</button>
                         </div>
@@ -490,8 +506,8 @@
             <!-- Users Tab -->
             <section id="tab-users" class="tab-content">
                 <h2 class="text-3xl font-serif mb-6">Usuarios Registrados</h2>
-                <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
-                    <table class="w-full text-left border-collapse">
+                <div class="bg-white border border-zinc-200 rounded-2xl overflow-x-auto shadow-sm">
+                    <table class="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                             <tr class="bg-zinc-50 border-b border-zinc-200">
                                 <th class="py-3 px-4 text-xs font-bold uppercase tracking-widest text-zinc-500">Usuario</th>
@@ -570,6 +586,15 @@
                                 <input type="text" id="cfg-store-name" placeholder="StyleHN" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-serif text-lg font-bold">
                             </div>
                             <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Logo Principal (URL Imagen Opcional)</label>
+                                <input type="url" id="cfg-logo-url" placeholder="Ej: https://.../logo.png" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
+                                <p class="text-[10px] text-zinc-400 mt-1">Si colocas una imagen, reemplazará al Nombre en la cabecera.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Favicon (URL Imagen Opcional)</label>
+                                <input type="url" id="cfg-favicon-url" placeholder="Ej: https://.../favicon.ico" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm">
+                            </div>
+                            <div>
                                 <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Descripción (Footer)</label>
                                 <textarea id="cfg-store-desc" rows="2" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none text-sm" placeholder="Editorial E-Commerce. All rights reserved."></textarea>
                             </div>
@@ -579,6 +604,40 @@
                                     <input type="color" id="cfg-color-1" value="#ba0036" class="w-12 h-12 p-1 border rounded cursor-pointer shrink-0">
                                     <input type="text" id="cfg-color-1-text" value="#ba0036" class="px-3 py-2 border rounded-lg w-full outline-none focus:border-black font-mono">
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-panel settings-panel-tema bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="palette" class="w-4 h-4 text-zinc-400"></i> Estilo Global</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Tipografía Principal</label>
+                                <select id="cfg-font-family" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                    <option value="serif">Elegante (Serif - Playfair)</option>
+                                    <option value="sans">Moderna (Sans - Inter)</option>
+                                    <option value="mono">Urbana (Mono - Space Mono)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Tema de la Tienda</label>
+                                <select id="cfg-theme" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                    <option value="light">Claro (Fondo Blanco / Texto Oscuro)</option>
+                                    <option value="dark">Oscuro (Fondo Negro / Texto Claro)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Estilo de Tarjetas de Producto</label>
+                                <select id="cfg-card-style" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none mb-2">
+                                    <option value="minimal">Minimalista (Sin borde)</option>
+                                    <option value="bordered">Con Borde Suave</option>
+                                    <option value="shadow">Con Sombra Elevada</option>
+                                </select>
+                                <select id="cfg-card-aspect" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                                    <option value="square">Imágenes Cuadradas (1:1)</option>
+                                    <option value="portrait">Imágenes Verticales (3:4 Moda)</option>
+                                    <option value="video">Imágenes Panorámicas (16:9)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -614,11 +673,25 @@
                     </div>
 
                     <div class="settings-panel settings-panel-tema bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm">
-                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="message-circle" class="w-4 h-4 text-zinc-400"></i> Contacto y Atención</h3>
-                        <div>
-                            <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Número de WhatsApp</label>
-                            <input type="tel" id="cfg-whatsapp" placeholder="Ej: 50499999999 (Sin símbolos)" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
-                            <p class="text-[10px] text-zinc-400 mt-1">Ingresa el número con código de área para recibir las órdenes (solo números).</p>
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="message-circle" class="w-4 h-4 text-zinc-400"></i> Contacto y Redes</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Número de WhatsApp</label>
+                                <input type="tel" id="cfg-whatsapp" placeholder="Ej: 50499999999 (Sin símbolos)" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
+                                <p class="text-[10px] text-zinc-400 mt-1">Ingresa el número con código de área para recibir las órdenes (solo números).</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Instagram (URL)</label>
+                                <input type="url" id="cfg-social-ig" placeholder="Ej: https://instagram.com/tutienda" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Facebook (URL)</label>
+                                <input type="url" id="cfg-social-fb" placeholder="Ej: https://facebook.com/tutienda" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">TikTok (URL)</label>
+                                <input type="url" id="cfg-social-tk" placeholder="Ej: https://tiktok.com/@tutienda" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none">
+                            </div>
                         </div>
                     </div>
 
@@ -634,6 +707,25 @@
                                 <input type="number" id="cfg-shipping-threshold" step="0.01" value="0.00" class="w-full px-3 py-2 border rounded-lg focus:border-black outline-none font-mono">
                                 <p class="text-[10px] text-zinc-400 mt-1">Si el pedido supera este total, el envío será $0.00</p>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-panel settings-panel-banners bg-white p-6 border border-zinc-200 rounded-2xl shadow-sm md:col-span-2">
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2 border-b border-zinc-100 pb-2"><i data-lucide="layout" class="w-4 h-4 text-zinc-400"></i> Estructura del Inicio (Layout)</h3>
+                        <p class="text-xs text-zinc-500 mb-4">Activa o desactiva las secciones de la pantalla de inicio.</p>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="cfg-layout-hero" class="w-5 h-5 rounded text-black focus:ring-black">
+                                <span class="text-sm font-bold text-zinc-700">Mostrar Banner Principal (Hero)</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="cfg-layout-brands" class="w-5 h-5 rounded text-black focus:ring-black">
+                                <span class="text-sm font-bold text-zinc-700">Mostrar Barra de Marcas</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="cfg-layout-categories" class="w-5 h-5 rounded text-black focus:ring-black">
+                                <span class="text-sm font-bold text-zinc-700">Mostrar Cuadrícula de Categorías (Mujer, Hombre, etc.)</span>
+                            </label>
                         </div>
                     </div>
                     
@@ -869,6 +961,41 @@
     <!-- Generic Toast Container -->
     <div id="toast-container" class="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none"></div>
 
+    <!-- Scripts -->
+    <script>
+        // Mobile Sidebar Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+            const sidebar = document.getElementById('admin-sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+            function toggleSidebar() {
+                const isOpen = !sidebar.classList.contains('-translate-x-full');
+                if (isOpen) {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.add('hidden');
+                } else {
+                    sidebar.classList.remove('-translate-x-full');
+                    sidebarOverlay.classList.remove('hidden');
+                }
+            }
+
+            mobileMenuBtn?.addEventListener('click', toggleSidebar);
+            closeSidebarBtn?.addEventListener('click', toggleSidebar);
+            sidebarOverlay?.addEventListener('click', toggleSidebar);
+            
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.add('-translate-x-full');
+                        sidebarOverlay.classList.add('hidden');
+                    }
+                });
+            });
+        });
+    </script>
     <script type="module" src="./js/admin.js"></script>
 </body>
 </html>
